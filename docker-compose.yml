@@ -1,0 +1,52 @@
+services:
+
+  mysql:
+    image: mysql:8.0
+    container_name: agrotrack-db
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: agrotrack
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  backend:
+    build: ./backend
+    container_name: agrotrack-backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/agrotrack?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=Europe/Madrid
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=root
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - MAIL_HOST=mailpit
+      - MAIL_PORT=1025
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - JWT_SECRET=${JWT_SECRET:-agrotrack-secret-key-dra-ual-2026}
+    depends_on:
+      - mysql
+      - mailpit
+
+  frontend:
+    build: ./frontend
+    container_name: agrotrack-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: agrotrack-mailpit
+    restart: unless-stopped
+    ports:
+      - "8025:8025"   # UI web
+      - "1025:1025"   # SMTP
+
+volumes:
+  mysql_data:
