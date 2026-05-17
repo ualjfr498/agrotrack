@@ -1,0 +1,39 @@
+# ─── Maven / Spring Boot ──────────────────────────────────────────────────
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.log
+.mvn/wrapper/maven-wrapper.jar
+
+# ─── IDE ──────────────────────────────────────────────────────────────────
+.idea/
+*.iml
+.eclipse/
+.settings/
+.classpath
+.project
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# ─── Angular / Node ───────────────────────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+frontend/.env
+
+# ─── Secretos y configuración local ──────────────────────────────────────
+application-local.properties
+*.env
+.env
+
+# ─── Docker ───────────────────────────────────────────────────────────────
+docker-compose.override.yml
+
+# ─── OS ───────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
