@@ -1,0 +1,21 @@
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/agrotrack?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=Europe/Madrid}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:root}
+  jpa:
+    hibernate:
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        format_sql: true
+    show-sql: ${SPRING_JPA_SHOW_SQL:true}
+    open-in-view: false
+  ai:
+    ollama:
+      base-url: ${SPRING_AI_OLLAMA_BASE_URL:http://localhost:11434}
+      chat:
+        model: ${SPRING_AI_OLLAMA_CHAT_MODEL:llama3.2:3b}
+        options:
+          temperature: 0.3

@@ -12,7 +12,7 @@
 
 1. **Precios mayoristas actualizados** — scraping automatizado de [mercasa.es](https://www.mercasa.es/precios-y-mercados-mayoristas/) dos veces por semana mediante `@Scheduled`. Solo se incluyen los productos de los que Mercasa publica precio real: **frutas y hortalizas**.
 2. **Gestión del huerto personal** — el agricultor registra sus parcelas, asocia cultivos del catálogo existente y hace seguimiento del estado de cada uno.
-3. **Asistente IA experto en tendencias** — agente basado en Gemini que analiza el histórico real de precios de MySQL y asesora al agricultor sobre cuándo vender, cómo evoluciona el mercado y qué esperar la próxima semana.
+3. **Asistente IA experto en tendencias** — agente basado en Llama 3.2 (servido localmente por Ollama) que analiza el histórico real de precios de MySQL y asesora al agricultor sobre cuándo vender, cómo evoluciona el mercado y qué esperar la próxima semana. Todo el procesamiento ocurre en infraestructura propia, sin enviar datos a servicios externos.
 
 ---
 
@@ -24,8 +24,8 @@
 | Backend | Spring Boot + Java | 3.5 / Java 21 |
 | Base de datos | MySQL | 8.0 |
 | Scraping | Jsoup | 1.18+ |
-| IA — LLM | Spring AI + Google Gemini | spring-ai 1.1+ |
-| IA — Herramientas | Spring AI MCP Server (interno) | spring-ai 1.1+ |
+| IA — LLM | Spring AI + Llama 3.2 (Ollama) | spring-ai 1.1+ / llama3.2:3b |
+| IA — Herramientas | Spring AI tool-calling (`@Tool`) | spring-ai 1.1+ |
 | Automatización | Spring `@Scheduled` | — |
 | Email | Spring Mail + Mailpit (dev) | — |
 | Autenticación | Spring Security + JWT | — |
@@ -148,14 +148,14 @@ Al arrancar por primera vez, `DataInitializer` puebla la BD con los productos ex
 
 ## 🤖 Asistente IA — Experto en tendencias de mercado
 
-El asistente combina **Spring AI + Gemini** con un **MCP Server interno** que expone datos reales de MySQL como herramientas que el LLM invoca según necesite.
+El asistente combina **Spring AI + Llama 3.2** (servido por Ollama en un contenedor propio) con un conjunto de **herramientas internas anotadas con `@Tool`** que exponen datos reales de MySQL al LLM. Llama decide bajo demanda qué herramientas invocar para responder cada pregunta — el patrón es equivalente al de un MCP Server interno, sin dependencia de proveedores cloud.
 
 ```
 Usuario: "¿Cuándo debo vender mi tomate?"
         ↓
 POST /api/asistente/consulta
         ↓
-Gemini decide qué datos necesita e invoca MCP tools:
+Llama decide qué datos necesita e invoca las tools:
   ├── getHistorialPrecios("tomate", 60)   → precios reales MySQL
   ├── getMiCultivos(usuarioId)            → cultivos activos del agricultor
   └── getProductosTemporada()             → contexto estacional
@@ -163,7 +163,13 @@ Gemini decide qué datos necesita e invoca MCP tools:
 Responde como experto con datos reales, no genéricos
 ```
 
-### MCP Tools internas (`AgroTools.java`)
+**Por qué Llama local en lugar de Gemini cloud:**
+- Privacidad por diseño: ninguna consulta del agricultor sale de la infraestructura.
+- Sin coste por token ni claves de API.
+- El sistema funciona completamente offline tras la descarga inicial del modelo.
+- Demuestra el desacoplamiento de la abstracción `ChatClient` de Spring AI: cambiar de proveedor (Gemini ↔ Llama ↔ OpenAI) es solo cambiar dependencia y configuración, sin tocar el código de negocio.
+
+### Herramientas internas (`AgroTools.java`)
 
 ```java
 @Tool("Historial de precios de un producto los últimos N días")
@@ -206,10 +212,11 @@ El ADMIN puede disparar el scraping manualmente desde el panel sin esperar al ho
 
 ```yaml
 services:
-  mysql:      # Puerto 3306  — Base de datos
-  backend:    # Puerto 8080  — API REST + Spring AI + MCP + @Scheduled
-  frontend:   # Puerto 80    — Angular (Nginx)
-  mailpit:    # Puerto 8025  — SMTP local para desarrollo
+  mysql:      # Puerto 3306   — Base de datos
+  ollama:     # Puerto 11434  — Servidor local de Llama 3.2
+  backend:    # Puerto 8080   — API REST + Spring AI + tool-calling + @Scheduled
+  frontend:   # Puerto 80     — Angular (Nginx)
+  mailpit:    # Puerto 8025   — SMTP local para desarrollo
 ```
 
 ---
@@ -272,7 +279,7 @@ Flujo: registro → login → JWT → Angular interceptor adjunta `Authorization
 ### Asistente IA
 | Método | Endpoint | Descripción | Rol |
 |---|---|---|---|
-| POST | `/api/asistente/consulta` | Envía pregunta al agente Gemini | AGRICULTOR |
+| POST | `/api/asistente/consulta` | Envía pregunta al agente Llama (con tool-calling) | AGRICULTOR |
 
 ### Admin
 | Método | Endpoint | Descripción | Rol |
@@ -317,10 +324,15 @@ Flujo: registro → login → JWT → Angular interceptor adjunta `Authorization
 ```bash
 docker-compose up --build
 
+# La primera vez, tras el arranque, descargar el modelo de Llama:
+docker exec -it agrotrack-ollama ollama pull llama3.2:3b
+# (~2 GB, queda persistido en el volumen ollama_data para los siguientes arranques)
+
 # Frontend:  http://localhost
 # Backend:   http://localhost:8080
 # Mailpit:   http://localhost:8025
 # MySQL:     localhost:3306
+# Ollama:    http://localhost:11434
 ```
 
 ---
@@ -329,11 +341,11 @@ docker-compose up --build
 
 | Tema DRA | Tecnología | Aplicación en el proyecto |
 |---|---|---|
-| Tema 2 | Docker + Docker Compose | 4 servicios orquestados |
+| Tema 2 | Docker + Docker Compose | 5 servicios orquestados |
 | Tema 3/5 | Angular | SPA completa con routing, guards, interceptores |
 | Tema 4 | Spring Boot REST + JPA | API REST + persistencia MySQL |
 | Prácticas CSS | Angular styles | Diseño visual de la app |
 | Scraping | Jsoup | Extracción de precios de Mercasa |
-| Google AI Studio | Spring AI + Gemini | Asistente experto con MCP tools internas |
+| LLM local | Spring AI + Llama 3.2 (Ollama) | Asistente experto con tool-calling sobre datos reales de MySQL, ejecutado en infraestructura propia |
 | Automatización | Spring `@Scheduled` | Job de scraping + evaluación de alertas |
 | Patrones GoF | Repository, Strategy, Observer, Facade | Aplicados en capa de servicio y datos |

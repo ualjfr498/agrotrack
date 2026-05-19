@@ -12,6 +12,15 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
 
+  ollama:
+    image: ollama/ollama:latest
+    container_name: agrotrack-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+
   backend:
     build: ./backend
     container_name: agrotrack-backend
@@ -25,11 +34,13 @@ services:
       - SPRING_JPA_HIBERNATE_DDL_AUTO=update
       - MAIL_HOST=mailpit
       - MAIL_PORT=1025
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - SPRING_AI_OLLAMA_BASE_URL=http://ollama:11434
+      - SPRING_AI_OLLAMA_CHAT_MODEL=llama3.2:3b
       - JWT_SECRET=${JWT_SECRET:-agrotrack-secret-key-dra-ual-2026}
     depends_on:
       - mysql
       - mailpit
+      - ollama
 
   frontend:
     build: ./frontend
@@ -50,3 +61,4 @@ services:
 
 volumes:
   mysql_data:
+  ollama_data:
