@@ -19,3 +19,9 @@ spring:
         model: ${SPRING_AI_OLLAMA_CHAT_MODEL:llama3.2:3b}
         options:
           temperature: 0.3
+
+agrotrack:
+  scraping:
+    mercasa:
+      url: ${AGROTRACK_SCRAPING_MERCASA_URL:https://www.mercasa.es/precios-y-mercados-mayoristas/}
+    cron: ${AGROTRACK_SCRAPING_CRON:0 0 7 * * MON,THU}

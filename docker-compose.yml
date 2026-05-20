@@ -50,6 +50,10 @@ services:
       - "80:80"
     depends_on:
       - backend
+    # Desactivado hasta inicializar Angular (Fase 5).
+    # Para levantarlo: docker-compose --profile frontend up
+    profiles:
+      - frontend
 
   mailpit:
     image: axllent/mailpit:latest
