@@ -12,7 +12,7 @@
 
 1. **Precios mayoristas actualizados** — scraping automatizado de [mercasa.es](https://www.mercasa.es/precios-y-mercados-mayoristas/) dos veces por semana mediante `@Scheduled`. Solo se incluyen los productos de los que Mercasa publica precio real: **frutas y hortalizas**.
 2. **Gestión del huerto personal** — el agricultor registra sus parcelas, asocia cultivos del catálogo existente y hace seguimiento del estado de cada uno.
-3. **Asistente IA experto en tendencias** — agente basado en Llama 3.2 (servido localmente por Ollama) que analiza el histórico real de precios de MySQL y asesora al agricultor sobre cuándo vender, cómo evoluciona el mercado y qué esperar la próxima semana. Todo el procesamiento ocurre en infraestructura propia, sin enviar datos a servicios externos.
+3. **Asistente IA experto en tendencias con MCP** — agente basado en Qwen 2.5 (servido localmente por LM Studio) que analiza el histórico real de precios de MySQL a través de un **MCP server independiente**. El agricultor recibe consejos sobre cuándo vender, cómo evoluciona el mercado y qué esperar la próxima semana. Todo el procesamiento ocurre en infraestructura propia, sin enviar datos a servicios externos.
 
 ---
 
@@ -24,8 +24,9 @@
 | Backend | Spring Boot + Java | 3.5 / Java 21 |
 | Base de datos | MySQL | 8.0 |
 | Scraping | Jsoup | 1.18+ |
-| IA — LLM | Spring AI + Llama 3.2 (Ollama) | spring-ai 1.1+ / llama3.2:3b |
-| IA — Herramientas | Spring AI tool-calling (`@Tool`) | spring-ai 1.1+ |
+| IA — LLM | Spring AI + Qwen 2.5 (LM Studio en host) | spring-ai 1.1+ / qwen2.5-7b-instruct |
+| IA — MCP Server | Spring AI MCP server (módulo aparte) | spring-ai 1.1+ |
+| IA — MCP Client | Spring AI MCP client (en backend) | spring-ai 1.1+ |
 | Automatización | Spring `@Scheduled` | — |
 | Email | Spring Mail + Mailpit (dev) | — |
 | Autenticación | Spring Security + JWT | — |
@@ -38,12 +39,27 @@
 
 ```
 agrotrack/
-├── backend/
+├── common/                                      # Módulo Maven compartido (entidades + repos)
+│   ├── src/main/java/es/ual/dra/agrotrack/
+│   │   ├── model/entity/
+│   │   │   ├── AppUser.java
+│   │   │   ├── Categoria.java                   # FRUTAS | HORTALIZAS
+│   │   │   ├── Producto.java
+│   │   │   ├── MercadoMayorista.java
+│   │   │   ├── PrecioMayorista.java
+│   │   │   ├── Parcela.java
+│   │   │   ├── CultivoParcela.java
+│   │   │   ├── AlertaPrecio.java
+│   │   │   └── ScrapingLog.java
+│   │   └── repository/
+│   └── pom.xml
+│
+├── backend/                                     # API REST + ChatClient + cliente MCP
 │   ├── src/main/java/es/ual/dra/agrotrack/
 │   │   ├── config/
 │   │   │   ├── SecurityConfig.java
 │   │   │   ├── CorsConfig.java
-│   │   │   ├── AiConfig.java
+│   │   │   ├── AiConfig.java                    # ChatClient → LM Studio + MCP client
 │   │   │   └── MailConfig.java
 │   │   ├── controller/
 │   │   │   ├── AuthController.java
@@ -54,34 +70,30 @@ agrotrack/
 │   │   │   ├── AsistenteController.java
 │   │   │   └── AdminController.java
 │   │   ├── dto/
-│   │   ├── model/entity/
-│   │   │   ├── AppUser.java
-│   │   │   ├── Categoria.java          # FRUTAS | HORTALIZAS
-│   │   │   ├── Producto.java
-│   │   │   ├── MercadoMayorista.java
-│   │   │   ├── PrecioMayorista.java
-│   │   │   ├── Parcela.java
-│   │   │   ├── CultivoParcela.java
-│   │   │   ├── AlertaPrecio.java
-│   │   │   └── ScrapingLog.java
-│   │   ├── repository/
 │   │   ├── service/
 │   │   │   ├── scraping/
-│   │   │   │   ├── ScrapingService.java    # Jsoup → Mercasa
-│   │   │   │   └── ScrapingScheduler.java  # @Scheduled lunes y jueves 07:00
-│   │   │   ├── ai/
-│   │   │   │   ├── AsistenteService.java
-│   │   │   │   └── mcp/
-│   │   │   │       └── AgroTools.java      # MCP tools internas
+│   │   │   │   ├── ScrapingService.java         # Jsoup → Mercasa
+│   │   │   │   └── ScrapingScheduler.java       # @Scheduled lunes y jueves 07:00
+│   │   │   ├── AsistenteService.java            # ChatClient ↔ LM Studio (Qwen) + MCP client
 │   │   │   ├── AlertaService.java
 │   │   │   └── NotificacionService.java
 │   │   ├── init/
-│   │   │   └── DataInitializer.java        # Pobla BD al arrancar
+│   │   │   └── DataInitializer.java             # Pobla BD al arrancar
 │   │   └── security/
 │   ├── Dockerfile
 │   └── pom.xml
 │
-├── frontend/
+├── mcp-server/                                  # MCP server independiente (tools → MySQL)
+│   ├── src/main/java/es/ual/dra/agrotrack/mcp/
+│   │   ├── AgrotrackMcpApplication.java
+│   │   ├── config/
+│   │   │   └── McpServerConfig.java             # Registro de tools
+│   │   └── tools/
+│   │       └── AgroTools.java                   # @Tool: getHistorialPrecios, getMiCultivos…
+│   ├── Dockerfile
+│   └── pom.xml
+│
+├── frontend/                                    # Angular SPA
 │   ├── src/app/
 │   │   ├── auth/
 │   │   ├── components/
@@ -99,6 +111,7 @@ agrotrack/
 │   └── Dockerfile
 │
 ├── docker-compose.yml
+├── pom.xml                                      # Parent multi-módulo (Maven)
 └── README.md
 ```
 
@@ -146,32 +159,55 @@ Al arrancar por primera vez, `DataInitializer` puebla la BD con los productos ex
 
 ---
 
-## 🤖 Asistente IA — Experto en tendencias de mercado
+## 🤖 Asistente IA — Experto en tendencias de mercado vía MCP
 
-El asistente combina **Spring AI + Llama 3.2** (servido por Ollama en un contenedor propio) con un conjunto de **herramientas internas anotadas con `@Tool`** que exponen datos reales de MySQL al LLM. Llama decide bajo demanda qué herramientas invocar para responder cada pregunta — el patrón es equivalente al de un MCP Server interno, sin dependencia de proveedores cloud.
+El asistente combina **Spring AI + Qwen 2.5** (servido por **LM Studio** corriendo en el host) con un **MCP server independiente** que expone las herramientas de acceso a datos. El backend actúa como **cliente MCP** y descubre las tools al arrancar — las mismas tools son consumibles también por cualquier otro cliente MCP (LM Studio chat UI, Claude Desktop, Cursor…) sin código adicional.
+
+### Flujo completo
 
 ```
-Usuario: "¿Cuándo debo vender mi tomate?"
+Usuario en Angular: "¿Cuándo debo vender mi tomate?"
+        ↓ HTTP REST
+POST /api/asistente/consulta  →  backend (Spring Boot)
         ↓
-POST /api/asistente/consulta
+   ChatClient (Spring AI)
+        ├─► LM Studio (host.docker.internal:1234)  ◄── Qwen 2.5 razona
+        │
+        └─► MCP Client (descubre tools al arrancar)
+                ↓ JSON-RPC sobre HTTP
+        mcp-server (contenedor aparte, puerto 8081)
+                ↓ JPA
+            MySQL  ──► getHistorialPrecios("tomate", 60)
+                       getMiCultivos(usuarioId)
+                       getProductosTemporada()
         ↓
-Llama decide qué datos necesita e invoca las tools:
-  ├── getHistorialPrecios("tomate", 60)   → precios reales MySQL
-  ├── getMiCultivos(usuarioId)            → cultivos activos del agricultor
-  └── getProductosTemporada()             → contexto estacional
+Qwen sintetiza respuesta con datos reales
         ↓
-Responde como experto con datos reales, no genéricos
+Backend devuelve JSON a Angular → UI muestra al agricultor
 ```
 
-**Por qué Llama local en lugar de Gemini cloud:**
-- Privacidad por diseño: ninguna consulta del agricultor sale de la infraestructura.
-- Sin coste por token ni claves de API.
-- El sistema funciona completamente offline tras la descarga inicial del modelo.
-- Demuestra el desacoplamiento de la abstracción `ChatClient` de Spring AI: cambiar de proveedor (Gemini ↔ Llama ↔ OpenAI) es solo cambiar dependencia y configuración, sin tocar el código de negocio.
+### Por qué esta arquitectura (Opción MCP externo)
 
-### Herramientas internas (`AgroTools.java`)
+- **Interoperabilidad real del estándar MCP** — las mismas tools que invoca el backend son consumibles por **cualquier cliente MCP** sin escribir adaptadores: LM Studio chat UI, Claude Desktop, Cursor, etc.
+- **Separación de responsabilidades** — el backend orquesta el chat (REST, auth, prompts), el mcp-server orquesta los datos (JPA, agregaciones). Cada uno evoluciona por su cuenta.
+- **Privacidad por diseño** — ninguna consulta del agricultor sale de la infraestructura local; LM Studio corre en la máquina del usuario.
+- **Sin coste por token ni claves de API** — modelo local.
+- **Desacoplamiento del proveedor LLM** — gracias a la abstracción `ChatClient` de Spring AI, cambiar Qwen por otro modelo es solo modificar `application.yml`.
+
+### Coste asumido respecto a Ollama containerizado
+
+LM Studio es una app de escritorio y **no se distribuye como contenedor oficial**. El evaluador necesita:
+1. Instalar LM Studio en su máquina.
+2. Cargar el modelo `qwen2.5-7b-instruct` desde la UI.
+3. Activar el server local (`Serve on Local Network` en puerto 1234).
+4. Solo entonces `docker-compose up` levanta el stack.
+
+Se acepta esta fricción a cambio de demostrar el patrón MCP real (no simulado).
+
+### Tools expuestas por `mcp-server`
 
 ```java
+// mcp-server/src/main/java/es/ual/dra/agrotrack/mcp/tools/AgroTools.java
 @Tool("Historial de precios de un producto los últimos N días")
 List<PrecioDTO> getHistorialPrecios(String producto, int dias)
 
@@ -187,6 +223,8 @@ List<CultivoDTO> getMiCultivos(Long usuarioId)
 @Tool("Productos de temporada óptima en este momento")
 List<ProductoDTO> getProductosTemporada()
 ```
+
+Estas tools se publican por el protocolo MCP en `http://mcp-server:8081/mcp` (dentro de la red Docker) y en `http://localhost:8081/mcp` (desde el host, para clientes MCP de escritorio).
 
 ---
 
@@ -212,11 +250,19 @@ El ADMIN puede disparar el scraping manualmente desde el panel sin esperar al ho
 
 ```yaml
 services:
-  mysql:      # Puerto 3306   — Base de datos
-  ollama:     # Puerto 11434  — Servidor local de Llama 3.2
-  backend:    # Puerto 8080   — API REST + Spring AI + tool-calling + @Scheduled
-  frontend:   # Puerto 80     — Angular (Nginx)
-  mailpit:    # Puerto 8025   — SMTP local para desarrollo
+  mysql:        # Puerto 3306   — Base de datos
+  backend:      # Puerto 8080   — API REST + Spring AI ChatClient + MCP Client + @Scheduled
+  mcp-server:   # Puerto 8081   — Spring AI MCP Server (tools sobre MySQL)
+  frontend:     # Puerto 80     — Angular (Nginx)
+  mailpit:      # Puerto 8025   — SMTP local para desarrollo
+```
+
+Adicionalmente, **fuera del stack Docker**, en la máquina del usuario:
+
+```
+LM Studio (app de escritorio):
+  Puerto 1234 — Qwen 2.5 servido vía API OpenAI-compatible
+  Accesible desde el backend en host.docker.internal:1234
 ```
 
 ---
@@ -321,18 +367,22 @@ Flujo: registro → login → JWT → Angular interceptor adjunta `Authorization
 
 ## 🚀 Arranque local
 
+### Prerrequisito — LM Studio (solo si se va a usar el asistente IA)
+
+1. Descargar e instalar [LM Studio](https://lmstudio.ai/).
+2. Desde la pestaña *Discover*, descargar el modelo `qwen2.5-7b-instruct` (~4.5 GB).
+3. Pestaña *Local Server* → cargar el modelo → activar *Serve on Local Network* en puerto `1234`.
+
+### Levantar el stack
+
 ```bash
 docker-compose up --build
 
-# La primera vez, tras el arranque, descargar el modelo de Llama:
-docker exec -it agrotrack-ollama ollama pull llama3.2:3b
-# (~2 GB, queda persistido en el volumen ollama_data para los siguientes arranques)
-
-# Frontend:  http://localhost
-# Backend:   http://localhost:8080
-# Mailpit:   http://localhost:8025
-# MySQL:     localhost:3306
-# Ollama:    http://localhost:11434
+# Frontend:    http://localhost
+# Backend:     http://localhost:8080
+# MCP Server:  http://localhost:8081/mcp   (consumible por LM Studio, Claude Desktop, Cursor…)
+# Mailpit:     http://localhost:8025
+# MySQL:       localhost:3306
 ```
 
 ---
@@ -341,11 +391,13 @@ docker exec -it agrotrack-ollama ollama pull llama3.2:3b
 
 | Tema DRA | Tecnología | Aplicación en el proyecto |
 |---|---|---|
-| Tema 2 | Docker + Docker Compose | 5 servicios orquestados |
+| Tema 2 | Docker + Docker Compose | 5 servicios orquestados (LM Studio se ejecuta en host) |
 | Tema 3/5 | Angular | SPA completa con routing, guards, interceptores |
 | Tema 4 | Spring Boot REST + JPA | API REST + persistencia MySQL |
 | Prácticas CSS | Angular styles | Diseño visual de la app |
 | Scraping | Jsoup | Extracción de precios de Mercasa |
-| LLM local | Spring AI + Llama 3.2 (Ollama) | Asistente experto con tool-calling sobre datos reales de MySQL, ejecutado en infraestructura propia |
+| LLM local | Spring AI + Qwen 2.5 (LM Studio) | Asistente experto consumido vía `ChatClient`, modelo servido en host por LM Studio |
+| MCP (Model Context Protocol) | Spring AI MCP Server + Client | Tools de acceso a datos extraídas a servicio independiente, consumibles por backend y por cualquier cliente MCP externo |
+| Multi-módulo Maven | Parent POM + `common/` + `backend/` + `mcp-server/` | Entidades JPA compartidas entre backend y mcp-server sin duplicación |
 | Automatización | Spring `@Scheduled` | Job de scraping + evaluación de alertas |
 | Patrones GoF | Repository, Strategy, Observer, Facade | Aplicados en capa de servicio y datos |
