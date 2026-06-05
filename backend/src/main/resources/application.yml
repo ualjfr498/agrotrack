@@ -21,6 +21,9 @@ spring:
           temperature: 0.3
 
 agrotrack:
+  jwt:
+    secret: ${JWT_SECRET:agrotrack-secret-key-dra-ual-2026-must-be-at-least-256-bits-long}
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000}   # 24h
   scraping:
     mercasa:
       url: ${AGROTRACK_SCRAPING_MERCASA_URL:https://www.mercasa.es/precios-y-mercados-mayoristas/}

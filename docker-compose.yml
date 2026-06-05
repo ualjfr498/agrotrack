@@ -36,7 +36,7 @@ services:
       - MAIL_PORT=1025
       - SPRING_AI_OLLAMA_BASE_URL=http://ollama:11434
       - SPRING_AI_OLLAMA_CHAT_MODEL=llama3.2:3b
-      - JWT_SECRET=${JWT_SECRET:-agrotrack-secret-key-dra-ual-2026}
+      - JWT_SECRET=${JWT_SECRET:-agrotrack-secret-key-dra-ual-2026-must-be-at-least-256-bits-long}
     depends_on:
       - mysql
       - mailpit
