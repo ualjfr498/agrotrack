@@ -1,0 +1,65 @@
+<div class="container">
+  @if (loading()) {
+    <p class="muted">Cargando…</p>
+  } @else if (error(); as msg) {
+    <div class="alert alert-error">{{ msg }}</div>
+    <a routerLink="/catalogo">← Volver al catálogo</a>
+  } @else if (producto(); as p) {
+    <a routerLink="/catalogo" class="back-link">← Volver al catálogo</a>
+
+    <header class="detalle-header">
+      <span class="badge">{{ p.categoria.nombre }}</span>
+      <h1>{{ p.nombre }}</h1>
+      @if (p.descripcion) {
+        <p class="muted">{{ p.descripcion }}</p>
+      }
+    </header>
+
+    <section class="stats">
+      <div class="stat card">
+        <span class="stat-label muted">Registros (90 días)</span>
+        <span class="stat-value">{{ precios().length }}</span>
+      </div>
+      @if (precioMedio(); as media) {
+        <div class="stat card">
+          <span class="stat-label muted">Precio medio</span>
+          <span class="stat-value">{{ media | number:'1.2-2' }} €/kg</span>
+        </div>
+      }
+      @if (precioUltimo(); as ultimo) {
+        <div class="stat card">
+          <span class="stat-label muted">Último precio · {{ ultimo.mercadoNombre }}</span>
+          <span class="stat-value">{{ ultimo.precioKg | number:'1.2-2' }} €/kg</span>
+        </div>
+      }
+    </section>
+
+    <section>
+      <h2>Historial de precios</h2>
+      @if (precios().length === 0) {
+        <p class="muted">No hay precios registrados todavía para este producto.</p>
+      } @else {
+        <div class="card">
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Mercado</th>
+                <th class="num">Precio €/kg</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (precio of precios(); track precio.id) {
+                <tr>
+                  <td>{{ precio.fecha }}</td>
+                  <td>{{ precio.mercadoNombre }}</td>
+                  <td class="num">{{ precio.precioKg | number:'1.2-2' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+  }
+</div>

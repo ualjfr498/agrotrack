@@ -46,7 +46,6 @@ public class AuthService {
         user.setEmail(req.email());
         user.setPasswordHash(passwordEncoder.encode(req.password()));
         user.setRol(Rol.AGRICULTOR);
-        user.setNotificacionesEmail(true);
         AppUser guardado = userRepo.save(user);
         log.info("Nuevo usuario registrado: {} (id={})", guardado.getEmail(), guardado.getId());
         return guardado;

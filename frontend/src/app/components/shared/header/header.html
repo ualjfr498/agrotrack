@@ -1,0 +1,27 @@
+<header class="topbar">
+  <div class="topbar-inner">
+    <a routerLink="/" class="brand">
+      <span class="brand-icon">🌱</span>
+      <span class="brand-name">AgroTrack</span>
+    </a>
+
+    <nav class="nav">
+      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Inicio</a>
+      <a routerLink="/catalogo" routerLinkActive="active">Catálogo</a>
+      <a routerLink="/precios" routerLinkActive="active">Precios</a>
+      @if (auth.isAdmin()) {
+        <a routerLink="/admin" routerLinkActive="active">Admin</a>
+      }
+    </nav>
+
+    <div class="auth-area">
+      @if (auth.isAuthenticated()) {
+        <span class="user-email">{{ auth.currentUser()?.email }}</span>
+        <button class="btn btn-secondary btn-sm" (click)="logout()">Salir</button>
+      } @else {
+        <a routerLink="/login" class="btn btn-secondary btn-sm">Entrar</a>
+        <a routerLink="/register" class="btn btn-primary btn-sm">Registro</a>
+      }
+    </div>
+  </div>
+</header>

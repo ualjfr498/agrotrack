@@ -1,0 +1,43 @@
+<div class="container">
+  <header class="page-header">
+    <h1>Catálogo de productos</h1>
+    <p class="muted">Frutas y hortalizas con seguimiento de precio en mercados mayoristas.</p>
+  </header>
+
+  @if (loading()) {
+    <p class="muted">Cargando productos…</p>
+  } @else if (error(); as msg) {
+    <div class="alert alert-error">{{ msg }}</div>
+  } @else {
+    <div class="filters">
+      <button
+        class="chip"
+        [class.active]="categoriaSeleccionada() === null"
+        (click)="filtrar(null)">
+        Todos ({{ productos().length }})
+      </button>
+      @for (cat of categorias(); track cat.id) {
+        <button
+          class="chip"
+          [class.active]="categoriaSeleccionada() === cat.id"
+          (click)="filtrar(cat.id)">
+          {{ cat.nombre }}
+        </button>
+      }
+    </div>
+
+    <div class="grid">
+      @for (p of productosFiltrados(); track p.id) {
+        <a class="card producto-card" [routerLink]="['/catalogo', p.id]">
+          <span class="badge">{{ p.categoria.nombre }}</span>
+          <h3>{{ p.nombre }}</h3>
+          @if (p.descripcion) {
+            <p class="muted">{{ p.descripcion }}</p>
+          }
+        </a>
+      } @empty {
+        <p class="muted">No hay productos en esta categoría.</p>
+      }
+    </div>
+  }
+</div>

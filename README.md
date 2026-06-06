@@ -28,7 +28,6 @@
 | IA — MCP Server | Spring AI MCP server (módulo aparte) | spring-ai 1.1+ |
 | IA — MCP Client | Spring AI MCP client (en backend) | spring-ai 1.1+ |
 | Automatización | Spring `@Scheduled` | — |
-| Email | Spring Mail + Mailpit (dev) | — |
 | Autenticación | Spring Security + JWT | — |
 | Contenedores | Docker + Docker Compose | — |
 | Patrones de diseño | Repository, Service Facade, Strategy, Observer | — |
@@ -59,8 +58,7 @@ agrotrack/
 │   │   ├── config/
 │   │   │   ├── SecurityConfig.java
 │   │   │   ├── CorsConfig.java
-│   │   │   ├── AiConfig.java                    # ChatClient → LM Studio + MCP client
-│   │   │   └── MailConfig.java
+│   │   │   └── AiConfig.java                    # ChatClient → LM Studio + MCP client
 │   │   ├── controller/
 │   │   │   ├── AuthController.java
 │   │   │   ├── ProductoController.java
@@ -75,8 +73,7 @@ agrotrack/
 │   │   │   │   ├── ScrapingService.java         # Jsoup → Mercasa
 │   │   │   │   └── ScrapingScheduler.java       # @Scheduled lunes y jueves 07:00
 │   │   │   ├── AsistenteService.java            # ChatClient ↔ LM Studio (Qwen) + MCP client
-│   │   │   ├── AlertaService.java
-│   │   │   └── NotificacionService.java
+│   │   │   └── AlertaService.java               # Evalúa umbrales y persiste alertas disparadas
 │   │   ├── init/
 │   │   │   └── DataInitializer.java             # Pobla BD al arrancar
 │   │   └── security/
@@ -237,8 +234,7 @@ public void ejecutarScrapingYNotificar() {
     // 1. Jsoup parsea mercasa.es → extrae precios de frutas y hortalizas
     // 2. Mapea nombre → Producto en BD → guarda PrecioMayorista
     // 3. Registra en ScrapingLog (EXITOSO / FALLIDO)
-    // 4. AlertaService evalúa umbrales activos contra nuevos precios
-    // 5. NotificacionService envía email a usuarios con alertas disparadas
+    // 4. AlertaService evalúa umbrales activos contra nuevos precios y los marca como disparados
 }
 ```
 
@@ -254,7 +250,6 @@ services:
   backend:      # Puerto 8080   — API REST + Spring AI ChatClient + MCP Client + @Scheduled
   mcp-server:   # Puerto 8081   — Spring AI MCP Server (tools sobre MySQL)
   frontend:     # Puerto 80     — Angular (Nginx)
-  mailpit:      # Puerto 8025   — SMTP local para desarrollo
 ```
 
 Adicionalmente, **fuera del stack Docker**, en la máquina del usuario:
@@ -381,7 +376,6 @@ docker-compose up --build
 # Frontend:    http://localhost
 # Backend:     http://localhost:8080
 # MCP Server:  http://localhost:8081/mcp   (consumible por LM Studio, Claude Desktop, Cursor…)
-# Mailpit:     http://localhost:8025
 # MySQL:       localhost:3306
 ```
 
@@ -391,7 +385,7 @@ docker-compose up --build
 
 | Tema DRA | Tecnología | Aplicación en el proyecto |
 |---|---|---|
-| Tema 2 | Docker + Docker Compose | 5 servicios orquestados (LM Studio se ejecuta en host) |
+| Tema 2 | Docker + Docker Compose | 4 servicios orquestados (LM Studio se ejecuta en host) |
 | Tema 3/5 | Angular | SPA completa con routing, guards, interceptores |
 | Tema 4 | Spring Boot REST + JPA | API REST + persistencia MySQL |
 | Prácticas CSS | Angular styles | Diseño visual de la app |

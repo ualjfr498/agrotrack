@@ -1,0 +1,58 @@
+<div class="container">
+  <header class="page-header">
+    <h1>Panel administración</h1>
+    <p class="muted">Operaciones reservadas al rol ADMIN.</p>
+  </header>
+
+  <section class="card">
+    <h2>Scraping de precios</h2>
+    <p class="muted">
+      El scraping automatizado se ejecuta los lunes y jueves a las 07:00.
+      Desde aquí puedes dispararlo manualmente sin esperar al cron.
+    </p>
+
+    <button class="btn btn-primary" (click)="dispararScraping()" [disabled]="ejecutando()">
+      {{ ejecutando() ? 'Ejecutando…' : 'Disparar scraping ahora' }}
+    </button>
+
+    @if (error(); as msg) {
+      <div class="alert alert-error">{{ msg }}</div>
+    }
+
+    @if (ultimaEjecucion(); as log) {
+      <div class="resultado">
+        <h3>Última ejecución</h3>
+        <dl class="metrics">
+          <div>
+            <dt>Estado</dt>
+            <dd>
+              <span class="estado" [class.exitoso]="log.estado === EstadoScraping.EXITOSO"
+                                   [class.fallido]="log.estado === EstadoScraping.FALLIDO"
+                                   [class.parcial]="log.estado === EstadoScraping.PARCIAL">
+                {{ log.estado }}
+              </span>
+            </dd>
+          </div>
+          <div>
+            <dt>Fecha</dt>
+            <dd>{{ log.fechaEjecucion }}</dd>
+          </div>
+          <div>
+            <dt>Filas insertadas</dt>
+            <dd>{{ log.filasInsertadas ?? '—' }}</dd>
+          </div>
+          <div>
+            <dt>Duración</dt>
+            <dd>{{ log.duracionMs ?? '—' }} ms</dd>
+          </div>
+          @if (log.mensaje) {
+            <div class="full">
+              <dt>Mensaje</dt>
+              <dd>{{ log.mensaje }}</dd>
+            </div>
+          }
+        </dl>
+      </div>
+    }
+  </section>
+</div>

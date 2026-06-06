@@ -1,0 +1,64 @@
+<div class="container">
+  <header class="page-header">
+    <h1>Comparador de precios</h1>
+    <p class="muted">Selecciona un producto y compara su precio entre los 5 grandes mercados mayoristas.</p>
+  </header>
+
+  @if (error(); as msg) {
+    <div class="alert alert-error">{{ msg }}</div>
+  }
+
+  @if (loadingProductos()) {
+    <p class="muted">Cargando productos…</p>
+  } @else {
+    <div class="form-field">
+      <label for="producto">Producto</label>
+      <select
+        id="producto"
+        [ngModel]="productoIdSeleccionado()"
+        (ngModelChange)="onProductoChange($event)">
+        @for (p of productos(); track p.id) {
+          <option [ngValue]="p.id">{{ p.nombre }} ({{ p.categoria.nombre }})</option>
+        }
+      </select>
+    </div>
+
+    @if (loadingPrecios()) {
+      <p class="muted">Cargando precios…</p>
+    } @else if (comparativa().length === 0) {
+      <div class="card empty">
+        <p class="muted">Aún no hay precios registrados para este producto. El scraping se ejecuta los lunes y jueves.</p>
+      </div>
+    } @else {
+      <div class="card">
+        <table>
+          <thead>
+            <tr>
+              <th>Mercado</th>
+              <th class="num">Último precio</th>
+              <th>Última fecha</th>
+              <th class="num">Media 90d</th>
+              <th class="num">Registros</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of comparativa(); track item.mercadoId; let i = $index) {
+              <tr>
+                <td>
+                  @if (i === 0) {
+                    <span class="badge">más barato</span>
+                  }
+                  {{ item.mercadoNombre }}
+                </td>
+                <td class="num strong">{{ item.ultimoPrecio | number:'1.2-2' }} €/kg</td>
+                <td>{{ item.ultimaFecha }}</td>
+                <td class="num">{{ item.media | number:'1.2-2' }} €/kg</td>
+                <td class="num">{{ item.registros }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  }
+</div>

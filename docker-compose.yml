@@ -32,14 +32,11 @@ services:
       - SPRING_DATASOURCE_USERNAME=root
       - SPRING_DATASOURCE_PASSWORD=root
       - SPRING_JPA_HIBERNATE_DDL_AUTO=update
-      - MAIL_HOST=mailpit
-      - MAIL_PORT=1025
       - SPRING_AI_OLLAMA_BASE_URL=http://ollama:11434
       - SPRING_AI_OLLAMA_CHAT_MODEL=llama3.2:3b
       - JWT_SECRET=${JWT_SECRET:-agrotrack-secret-key-dra-ual-2026-must-be-at-least-256-bits-long}
     depends_on:
       - mysql
-      - mailpit
       - ollama
 
   frontend:
@@ -54,14 +51,6 @@ services:
     # Para levantarlo: docker-compose --profile frontend up
     profiles:
       - frontend
-
-  mailpit:
-    image: axllent/mailpit:latest
-    container_name: agrotrack-mailpit
-    restart: unless-stopped
-    ports:
-      - "8025:8025"   # UI web
-      - "1025:1025"   # SMTP
 
 volumes:
   mysql_data:

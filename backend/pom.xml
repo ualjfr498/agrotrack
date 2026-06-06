@@ -83,12 +83,6 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- ── Email (Mailpit en dev, SMTP real en prod) ────────────── -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-mail</artifactId>
-        </dependency>
-
         <!-- ── Spring AI — Ollama (chat + tool-calling para MCP) ────── -->
         <dependency>
             <groupId>org.springframework.ai</groupId>
@@ -132,6 +126,18 @@
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>

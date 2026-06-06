@@ -32,9 +32,6 @@ public class AppUser {
     @Column(name = "fecha_alta", nullable = false, updatable = false)
     private LocalDateTime fechaAlta;
 
-    @Column(name = "notificaciones_email", nullable = false)
-    private boolean notificacionesEmail = true;
-
     @PrePersist
     void onCreate() {
         if (fechaAlta == null) {
