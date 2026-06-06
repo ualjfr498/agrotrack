@@ -1,0 +1,31 @@
+server:
+  port: ${MCP_SERVER_PORT:8081}
+
+spring:
+  application:
+    name: agrotrack-mcp-server
+
+  ai:
+    mcp:
+      server:
+        name: agrotrack-mcp
+        version: 0.0.1
+        type: SYNC
+        instructions: >
+          Servidor MCP de AgroTrack. Ofrece herramientas para consultar precios
+          mayoristas de frutas y hortalizas en los 5 mercados Mercasa españoles,
+          calcular tendencias y, cuando se invoca desde el asistente autenticado
+          de la aplicación web, gestionar parcelas y cultivos del agricultor.
+
+agrotrack:
+  mcp:
+    # URL del backend al que el mcp-server delega todas sus operaciones.
+    backend-base-url: ${BACKEND_BASE_URL:http://localhost:8080}
+    # Secreto compartido con el backend para autenticar las llamadas REST.
+    # En prod debe inyectarse vía secret manager, NUNCA commitearse.
+    service-token: ${MCP_SERVICE_TOKEN:dev-mcp-service-token-cambiar-en-prod}
+
+logging:
+  level:
+    org.springframework.ai: INFO
+    es.ual.dra.agrotrack: DEBUG

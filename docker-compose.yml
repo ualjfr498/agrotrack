@@ -22,7 +22,9 @@ services:
       - ollama_data:/root/.ollama
 
   backend:
-    build: ./backend
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: agrotrack-backend
     restart: unless-stopped
     ports:
@@ -35,9 +37,24 @@ services:
       - SPRING_AI_OLLAMA_BASE_URL=http://ollama:11434
       - SPRING_AI_OLLAMA_CHAT_MODEL=llama3.2:3b
       - JWT_SECRET=${JWT_SECRET:-agrotrack-secret-key-dra-ual-2026-must-be-at-least-256-bits-long}
+      - MCP_SERVICE_TOKEN=${MCP_SERVICE_TOKEN:-dev-mcp-service-token-cambiar-en-prod}
     depends_on:
       - mysql
       - ollama
+
+  mcp-server:
+    build:
+      context: .
+      dockerfile: mcp-server/Dockerfile
+    container_name: agrotrack-mcp-server
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      - BACKEND_BASE_URL=http://backend:8080
+      - MCP_SERVICE_TOKEN=${MCP_SERVICE_TOKEN:-dev-mcp-service-token-cambiar-en-prod}
+    depends_on:
+      - backend
 
   frontend:
     build: ./frontend

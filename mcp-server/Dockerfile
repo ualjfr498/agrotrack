@@ -1,18 +1,16 @@
 # ── Fase 1: compilación multi-módulo ──────────────────────────────────────
+# Build context = raíz del repo (lo gobierna docker-compose.yml).
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /app
-# Parent pom + pom del módulo backend.
-# (mcp-server se añadirá como módulo hermano en el próximo paso de Fase 7,
-#  consumiendo la REST API del backend — no comparte código compilado.)
 COPY pom.xml ./
-COPY backend/pom.xml backend/
-RUN mvn -f pom.xml dependency:go-offline -pl backend -am -q
-COPY backend/src backend/src
-RUN mvn -f pom.xml package -pl backend -am -DskipTests -q
+COPY mcp-server/pom.xml mcp-server/
+RUN mvn -f pom.xml dependency:go-offline -pl mcp-server -am -q
+COPY mcp-server/src mcp-server/src
+RUN mvn -f pom.xml package -pl mcp-server -am -DskipTests -q
 
 # ── Fase 2: imagen final ───────────────────────────────────────────────────
 FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
-COPY --from=build /app/backend/target/*.jar app.jar
-EXPOSE 8080
+COPY --from=build /app/mcp-server/target/*.jar app.jar
+EXPOSE 8081
 ENTRYPOINT ["java", "-jar", "app.jar"]

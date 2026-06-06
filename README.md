@@ -38,20 +38,7 @@
 
 ```
 agrotrack/
-├── common/                                      # Módulo Maven compartido (entidades + repos)
-│   ├── src/main/java/es/ual/dra/agrotrack/
-│   │   ├── model/entity/
-│   │   │   ├── AppUser.java
-│   │   │   ├── Categoria.java                   # FRUTAS | HORTALIZAS
-│   │   │   ├── Producto.java
-│   │   │   ├── MercadoMayorista.java
-│   │   │   ├── PrecioMayorista.java
-│   │   │   ├── Parcela.java
-│   │   │   ├── CultivoParcela.java
-│   │   │   ├── AlertaPrecio.java
-│   │   │   └── ScrapingLog.java
-│   │   └── repository/
-│   └── pom.xml
+├── pom.xml                                      # Parent multi-módulo (Maven, packaging=pom)
 │
 ├── backend/                                     # API REST + ChatClient + cliente MCP
 │   ├── src/main/java/es/ual/dra/agrotrack/
@@ -66,8 +53,14 @@ agrotrack/
 │   │   │   ├── ParcelaController.java
 │   │   │   ├── AlertaController.java
 │   │   │   ├── AsistenteController.java
-│   │   │   └── AdminController.java
+│   │   │   ├── AdminController.java
+│   │   │   └── mcp/                             # Endpoints específicos para el MCP
+│   │   │       └── McpInternalController.java   # Operaciones que el frontend no expone
 │   │   ├── dto/
+│   │   ├── model/
+│   │   │   ├── entity/                          # AppUser, Producto, PrecioMayorista, …
+│   │   │   └── enums/                           # Rol, EstadoScraping, …
+│   │   ├── repository/                          # 9 repositorios Spring Data JPA
 │   │   ├── service/
 │   │   │   ├── scraping/
 │   │   │   │   ├── ScrapingService.java         # Jsoup → Mercasa
@@ -80,13 +73,16 @@ agrotrack/
 │   ├── Dockerfile
 │   └── pom.xml
 │
-├── mcp-server/                                  # MCP server independiente (tools → MySQL)
+├── mcp-server/                                  # MCP server independiente (cliente REST puro)
 │   ├── src/main/java/es/ual/dra/agrotrack/mcp/
 │   │   ├── AgrotrackMcpApplication.java
 │   │   ├── config/
 │   │   │   └── McpServerConfig.java             # Registro de tools
+│   │   ├── client/
+│   │   │   └── BackendClient.java               # RestClient → http://backend:8080
+│   │   ├── dto/                                 # POJOs propios (espejo del API del backend)
 │   │   └── tools/
-│   │       └── AgroTools.java                   # @Tool: getHistorialPrecios, getMiCultivos…
+│   │       └── AgroTools.java                   # @Tool que delegan al BackendClient
 │   ├── Dockerfile
 │   └── pom.xml
 │
@@ -107,10 +103,10 @@ agrotrack/
 │   ├── nginx.conf
 │   └── Dockerfile
 │
-├── docker-compose.yml
-├── pom.xml                                      # Parent multi-módulo (Maven)
-└── README.md
+└── docker-compose.yml
 ```
+
+> **Nota arquitectónica:** backend y mcp-server son módulos Maven hermanos pero **no comparten código compilado**. El mcp-server se relaciona con el backend exclusivamente a través de su API REST (con un token de servicio). Esto evita el shared-database antipattern y mantiene el backend como única fuente de verdad sobre el dominio.
 
 ---
 
@@ -173,23 +169,63 @@ POST /api/asistente/consulta  →  backend (Spring Boot)
         └─► MCP Client (descubre tools al arrancar)
                 ↓ JSON-RPC sobre HTTP
         mcp-server (contenedor aparte, puerto 8081)
+                ↓ HTTP REST (con service token)
+            backend (Spring Boot)
                 ↓ JPA
             MySQL  ──► getHistorialPrecios("tomate", 60)
                        getMiCultivos(usuarioId)
                        getProductosTemporada()
+                       registrarCultivo(parcelaId, productoId, fecha)
         ↓
 Qwen sintetiza respuesta con datos reales
         ↓
 Backend devuelve JSON a Angular → UI muestra al agricultor
 ```
 
-### Por qué esta arquitectura (Opción MCP externo)
+### La dicotomía: el mcp-server es **servidor MCP** Y **cliente REST** del backend
 
-- **Interoperabilidad real del estándar MCP** — las mismas tools que invoca el backend son consumibles por **cualquier cliente MCP** sin escribir adaptadores: LM Studio chat UI, Claude Desktop, Cursor, etc.
-- **Separación de responsabilidades** — el backend orquesta el chat (REST, auth, prompts), el mcp-server orquesta los datos (JPA, agregaciones). Cada uno evoluciona por su cuenta.
-- **Privacidad por diseño** — ninguna consulta del agricultor sale de la infraestructura local; LM Studio corre en la máquina del usuario.
-- **Sin coste por token ni claves de API** — modelo local.
-- **Desacoplamiento del proveedor LLM** — gracias a la abstracción `ChatClient` de Spring AI, cambiar Qwen por otro modelo es solo modificar `application.yml`.
+Es una de esas piezas raras del sistema que tiene dos caras según con quién esté hablando, y conviene aclararlo porque al leer el diagrama parece un loop conceptual.
+
+**Cara A — como servidor MCP** (lo que ve el LLM):
+
+El mcp-server publica un **catálogo de tools** vía el protocolo MCP (JSON-RPC sobre HTTP/SSE). Cualquier cliente MCP puede conectarse, descubrir qué tools hay y pedir su ejecución. Estos clientes son:
+
+- El propio backend, como parte del flujo del asistente en Angular.
+- LM Studio chat UI directamente (sin pasar por Angular).
+- Claude Desktop, Cursor o cualquier otra app MCP-aware.
+
+En esta cara, el mcp-server **responde**: "tengo estas 7 tools, dime cuál ejecutar y con qué parámetros".
+
+**Cara B — como cliente REST del backend** (lo que hace cuando ejecuta una tool):
+
+Cuando llega una invocación MCP del tipo `getHistorialPrecios(productoId=123)`, el mcp-server **no toca la BD**. Hace una llamada HTTP normal al backend (`GET /api/precios/123`) con un service token, recoge la respuesta y se la devuelve al cliente MCP.
+
+En esta cara, el mcp-server **pide**: "backend, dame los datos del producto 123 que tu API ya sabe calcular".
+
+**¿Por qué no es un loop?**
+
+Porque MCP y REST son **dos protocolos distintos sirviendo dos propósitos distintos**, aunque ambos viajen sobre HTTP:
+
+| | MCP (backend → mcp-server) | REST (mcp-server → backend) |
+|---|---|---|
+| Quién inicia | El cliente MCP (el LLM, vía ChatClient o vía chat de LM Studio) | El mcp-server, al ejecutar la tool |
+| Qué pide | "Descúbreme y ejecuta tools" | "Dame estos datos o ejecuta esta operación de dominio" |
+| Quién decide qué llamar | El LLM, al razonar sobre la pregunta del usuario | El código fijo de la tool |
+| Capa de abstracción | "Capacidades disponibles para IA" | "Operaciones de negocio del sistema" |
+
+Visto de otra forma: **el mcp-server es un *BFF para LLMs*** (Backend For Frontend, donde el frontend es un modelo de lenguaje). Traduce entre lo que el LLM sabe pedir (MCP + lenguaje natural en los nombres de las tools) y lo que el backend sabe ofrecer (REST con su modelo de dominio). Añade por el camino formato, agregaciones específicas de IA y aislamiento del modelo respecto al esquema interno del backend.
+
+### Por qué esta arquitectura
+
+- **Una única fuente de verdad del dominio**: toda la lógica de negocio (validaciones, autorizaciones, reglas) vive en el backend. El mcp-server **nunca** reimplementa reglas — siempre delega vía API.
+- **mcp-server desacoplado**: no comparte clases Java con el backend; podría reescribirse en Python o TypeScript sin tocar el backend. Solo necesita la URL del backend + un token de servicio.
+- **Interoperabilidad real del estándar MCP**: cualquier cliente MCP (LM Studio chat UI, Claude Desktop, Cursor…) consume las mismas tools sin código adicional. El backend mismo es cliente MCP de su propio mcp-server.
+- **Patrón profesional canónico**: los MCP servers oficiales de GitHub, Linear, Slack, Notion y Stripe siguen exactamente este patrón (MCP server como cliente de la API existente, no como acceso directo a la BD).
+- **Privacidad por diseño**: ninguna consulta del agricultor sale de la infraestructura local; LM Studio corre en la máquina del usuario.
+
+### Endpoints específicos para MCP
+
+Cuando una tool necesita un cálculo que el frontend NO usa (medias móviles, tendencias, ventanas variables…), el backend expone un endpoint dedicado bajo `/api/mcp/...` que **solo el mcp-server consume**. Esto evita ensuciar el API público con operaciones internas, y al mismo tiempo mantiene la regla de "todo pasa por la API del backend".
 
 ### Coste asumido respecto a Ollama containerizado
 
@@ -203,22 +239,29 @@ Se acepta esta fricción a cambio de demostrar el patrón MCP real (no simulado)
 
 ### Tools expuestas por `mcp-server`
 
+Cada tool delega a un endpoint REST del backend. El mcp-server inyecta un `BackendClient` (RestClient de Spring) y no toca JPA ni MySQL.
+
 ```java
 // mcp-server/src/main/java/es/ual/dra/agrotrack/mcp/tools/AgroTools.java
-@Tool("Historial de precios de un producto los últimos N días")
-List<PrecioDTO> getHistorialPrecios(String producto, int dias)
 
-@Tool("Precios actuales de un producto en todos los mercados")
-List<PrecioDTO> getPreciosActuales(String producto)
+// LECTURA — endpoint público existente
+@Tool("Historial de precios de un producto los últimos 90 días")
+List<PrecioData> getHistorialPrecios(Long productoId) {
+    return backendClient.getHistorial(productoId);   // → GET /api/precios/{productoId}
+}
 
-@Tool("Comparativa de precio entre mercados mayoristas")
-Map<String, Double> compararMercados(String producto)
+// LECTURA — endpoint específico para MCP (cálculo que la UI no necesita)
+@Tool("Productos con tendencia bajista en los últimos 14 días")
+List<TendenciaData> getProductosTendenciaBajista() {
+    return backendClient.getTendenciaBajista(14);    // → GET /api/mcp/tendencias/bajista?dias=14
+}
 
-@Tool("Cultivos activos del agricultor y estado de cada uno")
-List<CultivoDTO> getMiCultivos(Long usuarioId)
-
-@Tool("Productos de temporada óptima en este momento")
-List<ProductoDTO> getProductosTemporada()
+// ESCRITURA — endpoint REST del backend, valida todas las reglas de negocio
+@Tool("Registra un cultivo nuevo en una parcela del usuario")
+CultivoData registrarCultivo(Long parcelaId, Long productoId, LocalDate fecha) {
+    return backendClient.crearCultivo(parcelaId,
+        new CrearCultivoPayload(productoId, fecha)); // → POST /api/parcelas/{parcelaId}/cultivos
+}
 ```
 
 Estas tools se publican por el protocolo MCP en `http://mcp-server:8081/mcp` (dentro de la red Docker) y en `http://localhost:8081/mcp` (desde el host, para clientes MCP de escritorio).
@@ -391,7 +434,7 @@ docker-compose up --build
 | Prácticas CSS | Angular styles | Diseño visual de la app |
 | Scraping | Jsoup | Extracción de precios de Mercasa |
 | LLM local | Spring AI + Qwen 2.5 (LM Studio) | Asistente experto consumido vía `ChatClient`, modelo servido en host por LM Studio |
-| MCP (Model Context Protocol) | Spring AI MCP Server + Client | Tools de acceso a datos extraídas a servicio independiente, consumibles por backend y por cualquier cliente MCP externo |
-| Multi-módulo Maven | Parent POM + `common/` + `backend/` + `mcp-server/` | Entidades JPA compartidas entre backend y mcp-server sin duplicación |
+| MCP (Model Context Protocol) | Spring AI MCP Server + Client | Tools delegadas a la API REST del backend; consumibles por backend y por cualquier cliente MCP externo |
+| Multi-módulo Maven | Parent POM + `backend/` + `mcp-server/` | Dos servicios Spring Boot hermanos sin código compartido — el mcp-server es cliente REST del backend |
 | Automatización | Spring `@Scheduled` | Job de scraping + evaluación de alertas |
 | Patrones GoF | Repository, Strategy, Observer, Facade | Aplicados en capa de servicio y datos |
