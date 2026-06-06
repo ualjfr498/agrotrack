@@ -59,10 +59,14 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- ── Spring AI — Ollama (provisional; cambiará a OpenAI/LM Studio + MCP client en paso 5 de Fase 7) -->
+        <!-- ── Spring AI — LM Studio vía API OpenAI-compatible + MCP client al mcp-server ── -->
         <dependency>
             <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-starter-model-ollama</artifactId>
+            <artifactId>spring-ai-starter-model-openai</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-mcp-client-webflux</artifactId>
         </dependency>
 
         <!-- ── Scraping de Mercasa ──────────────────────────────────── -->

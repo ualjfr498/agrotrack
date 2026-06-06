@@ -1,6 +1,10 @@
 package es.ual.dra.agrotrack.mcp.client;
 
 import es.ual.dra.agrotrack.mcp.dto.CategoriaData;
+import es.ual.dra.agrotrack.mcp.dto.CultivoCreateData;
+import es.ual.dra.agrotrack.mcp.dto.CultivoData;
+import es.ual.dra.agrotrack.mcp.dto.ParcelaCreateData;
+import es.ual.dra.agrotrack.mcp.dto.ParcelaData;
 import es.ual.dra.agrotrack.mcp.dto.PrecioData;
 import es.ual.dra.agrotrack.mcp.dto.ProductoData;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +34,13 @@ public class BackendClient {
         new ParameterizedTypeReference<>() {};
     private static final ParameterizedTypeReference<List<CategoriaData>> CATEGORIA_LIST =
         new ParameterizedTypeReference<>() {};
+    private static final ParameterizedTypeReference<List<ParcelaData>> PARCELA_LIST =
+        new ParameterizedTypeReference<>() {};
+    private static final ParameterizedTypeReference<List<CultivoData>> CULTIVO_LIST =
+        new ParameterizedTypeReference<>() {};
+
+    /** Cabecera con el email del usuario en cuyo nombre actúa el mcp-server. */
+    private static final String ACTING_USER = "X-Acting-User";
 
     // ── Lecturas públicas (no requieren X-Acting-User) ──────────────────
 
@@ -68,5 +79,43 @@ public class BackendClient {
             .uri("/api/precios/{id}", productoId)
             .retrieve()
             .body(PRECIO_LIST);
+    }
+
+    // ── Operaciones con identidad (requieren X-Acting-User) ─────────────
+    // Reads privadas y writes. El backend (ServiceTokenFilter) resuelve el
+    // SecurityContext a partir del email de X-Acting-User.
+
+    public List<ParcelaData> misParcelas(String actingUser) {
+        return backendRestClient.get()
+            .uri("/api/parcelas")
+            .header(ACTING_USER, actingUser)
+            .retrieve()
+            .body(PARCELA_LIST);
+    }
+
+    public ParcelaData crearParcela(String actingUser, ParcelaCreateData body) {
+        return backendRestClient.post()
+            .uri("/api/parcelas")
+            .header(ACTING_USER, actingUser)
+            .body(body)
+            .retrieve()
+            .body(ParcelaData.class);
+    }
+
+    public List<CultivoData> misCultivos(String actingUser) {
+        return backendRestClient.get()
+            .uri("/api/cultivos")
+            .header(ACTING_USER, actingUser)
+            .retrieve()
+            .body(CULTIVO_LIST);
+    }
+
+    public CultivoData crearCultivo(String actingUser, CultivoCreateData body) {
+        return backendRestClient.post()
+            .uri("/api/cultivos")
+            .header(ACTING_USER, actingUser)
+            .body(body)
+            .retrieve()
+            .body(CultivoData.class);
     }
 }

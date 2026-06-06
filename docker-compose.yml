@@ -12,15 +12,6 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
 
-  ollama:
-    image: ollama/ollama:latest
-    container_name: agrotrack-ollama
-    restart: unless-stopped
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-
   backend:
     build:
       context: .
@@ -30,17 +21,26 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/agrotrack?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=Europe/Madrid
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/agrotrack?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Europe/Madrid
       - SPRING_DATASOURCE_USERNAME=root
       - SPRING_DATASOURCE_PASSWORD=root
       - SPRING_JPA_HIBERNATE_DDL_AUTO=update
-      - SPRING_AI_OLLAMA_BASE_URL=http://ollama:11434
-      - SPRING_AI_OLLAMA_CHAT_MODEL=llama3.2:3b
+      # LM Studio corre en el host del usuario; el backend lo alcanza
+      # vía host.docker.internal (Mac/Windows). El modelo debe estar
+      # cargado y "Serve on Local Network" activo en LM Studio.
+      - SPRING_AI_OPENAI_BASE_URL=http://host.docker.internal:1234
+      - SPRING_AI_OPENAI_CHAT_MODEL=qwen2.5-7b-instruct
+      - SPRING_AI_OPENAI_API_KEY=lm-studio
+      # Conexión al mcp-server por la red interna de Docker
+      - AGROTRACK_MCP_URL=http://mcp-server:8081
       - JWT_SECRET=${JWT_SECRET:-agrotrack-secret-key-dra-ual-2026-must-be-at-least-256-bits-long}
       - MCP_SERVICE_TOKEN=${MCP_SERVICE_TOKEN:-dev-mcp-service-token-cambiar-en-prod}
     depends_on:
       - mysql
-      - ollama
+      - mcp-server
+    extra_hosts:
+      # Necesario para que host.docker.internal funcione en Linux
+      - "host.docker.internal:host-gateway"
 
   mcp-server:
     build:
@@ -53,8 +53,10 @@ services:
     environment:
       - BACKEND_BASE_URL=http://backend:8080
       - MCP_SERVICE_TOKEN=${MCP_SERVICE_TOKEN:-dev-mcp-service-token-cambiar-en-prod}
-    depends_on:
-      - backend
+    # Sin depends_on backend: el mcp-server solo llama al backend en runtime
+    # (al ejecutar una tool), cuando el backend ya está arriba. Declararlo
+    # crearía un ciclo backend ↔ mcp-server. El orden lo fija backend, que sí
+    # depende del mcp-server para descubrir las tools al arrancar.
 
   frontend:
     build: ./frontend
@@ -64,11 +66,8 @@ services:
       - "80:80"
     depends_on:
       - backend
-    # Desactivado hasta inicializar Angular (Fase 5).
-    # Para levantarlo: docker-compose --profile frontend up
     profiles:
       - frontend
 
 volumes:
   mysql_data:
-  ollama_data:

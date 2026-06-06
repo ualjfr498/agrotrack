@@ -1,7 +1,9 @@
 package es.ual.dra.agrotrack.config;
 
 import es.ual.dra.agrotrack.security.filter.JwtAuthenticationFilter;
+import es.ual.dra.agrotrack.security.filter.ServiceTokenFilter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -32,6 +34,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtFilter;
+    private final ServiceTokenFilter serviceTokenFilter;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -45,7 +48,9 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/categorias/**").permitAll()
                 .anyRequest().authenticated()
             )
-            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+            // El service token se resuelve primero; si no hay, cae al flujo JWT.
+            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(serviceTokenFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }
@@ -53,5 +58,27 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    /*
+     * Los filtros son @Component y OncePerRequestFilter, así que Spring Boot
+     * los auto-registraría también como filtros del servlet container, fuera de
+     * la cadena de Spring Security. Eso duplica su ejecución e interfiere con el
+     * manejo de respuestas (p. ej. un sendError(401) acababa convertido en 403).
+     * Estos FilterRegistrationBean deshabilitados anulan ese auto-registro: los
+     * filtros viven SOLO donde los coloca addFilterBefore.
+     */
+    @Bean
+    public FilterRegistrationBean<ServiceTokenFilter> serviceTokenFilterRegistration(ServiceTokenFilter filter) {
+        FilterRegistrationBean<ServiceTokenFilter> reg = new FilterRegistrationBean<>(filter);
+        reg.setEnabled(false);
+        return reg;
+    }
+
+    @Bean
+    public FilterRegistrationBean<JwtAuthenticationFilter> jwtFilterRegistration(JwtAuthenticationFilter filter) {
+        FilterRegistrationBean<JwtAuthenticationFilter> reg = new FilterRegistrationBean<>(filter);
+        reg.setEnabled(false);
+        return reg;
     }
 }

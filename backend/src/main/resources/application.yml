@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/agrotrack?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=Europe/Madrid}
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/agrotrack?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Europe/Madrid}
     username: ${SPRING_DATASOURCE_USERNAME:root}
     password: ${SPRING_DATASOURCE_PASSWORD:root}
   jpa:
@@ -13,14 +13,27 @@ spring:
     show-sql: ${SPRING_JPA_SHOW_SQL:true}
     open-in-view: false
   ai:
-    ollama:
-      base-url: ${SPRING_AI_OLLAMA_BASE_URL:http://localhost:11434}
+    # ── LM Studio (en el host) vía API OpenAI-compatible ────────────
+    openai:
+      base-url: ${SPRING_AI_OPENAI_BASE_URL:http://localhost:1234}
+      api-key: ${SPRING_AI_OPENAI_API_KEY:lm-studio}   # LM Studio ignora el valor, Spring AI exige string no vacío
       chat:
-        model: ${SPRING_AI_OLLAMA_CHAT_MODEL:llama3.2:3b}
         options:
+          model: ${SPRING_AI_OPENAI_CHAT_MODEL:qwen2.5-7b-instruct}
           temperature: 0.3
+    # ── Cliente MCP que descubre y consume las tools del mcp-server ──
+    mcp:
+      client:
+        name: agrotrack-backend
+        sse:
+          connections:
+            agrotrack-mcp:
+              url: ${AGROTRACK_MCP_URL:http://localhost:8081}
 
 agrotrack:
+  # Secreto compartido con el mcp-server. Las llamadas internas del mcp-server
+  # lo presentan en X-Service-Token; el ServiceTokenFilter lo valida.
+  service-token: ${MCP_SERVICE_TOKEN:dev-mcp-service-token-cambiar-en-prod}
   jwt:
     secret: ${JWT_SECRET:agrotrack-secret-key-dra-ual-2026-must-be-at-least-256-bits-long}
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}   # 24h
