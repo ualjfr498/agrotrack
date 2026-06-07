@@ -2,7 +2,11 @@
 # Build context = raíz del repo (lo gobierna docker-compose.yml).
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /app
+# Parent pom + pom de AMBOS módulos: el parent declara backend y mcp-server,
+# y Maven necesita los dos pom para el modelo del reactor aunque -pl mcp-server
+# solo compile este módulo.
 COPY pom.xml ./
+COPY backend/pom.xml backend/
 COPY mcp-server/pom.xml mcp-server/
 RUN mvn -f pom.xml dependency:go-offline -pl mcp-server -am -q
 COPY mcp-server/src mcp-server/src

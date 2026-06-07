@@ -22,11 +22,16 @@ export class Catalogo {
   protected readonly loading = signal(true);
   protected readonly error = signal<string | null>(null);
   protected readonly categoriaSeleccionada = signal<number | null>(null);
+  protected readonly busqueda = signal('');
 
   protected readonly productosFiltrados = computed(() => {
     const cat = this.categoriaSeleccionada();
-    const todos = this.productos();
-    return cat === null ? todos : todos.filter(p => p.categoria.id === cat);
+    const texto = this.busqueda().trim().toLowerCase();
+    return this.productos().filter(p => {
+      const coincideCategoria = cat === null || p.categoria.id === cat;
+      const coincideTexto = texto === '' || p.nombre.toLowerCase().includes(texto);
+      return coincideCategoria && coincideTexto;
+    });
   });
 
   constructor() {
@@ -53,5 +58,9 @@ export class Catalogo {
 
   filtrar(catId: number | null): void {
     this.categoriaSeleccionada.set(catId);
+  }
+
+  buscar(valor: string): void {
+    this.busqueda.set(valor);
   }
 }

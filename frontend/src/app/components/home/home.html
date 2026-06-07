@@ -6,8 +6,7 @@
       españoles. Actualizado dos veces por semana desde mercasa.es.
     </p>
     <div class="hero-actions">
-      <a routerLink="/catalogo" class="btn btn-primary">Ver catálogo</a>
-      <a routerLink="/precios" class="btn btn-secondary">Comparar precios</a>
+      <a routerLink="/analizador" class="btn btn-primary">Analizar precios</a>
     </div>
   </div>
 </section>
@@ -22,7 +21,7 @@
   } @else {
     <div class="grid">
       @for (cat of categorias(); track cat.id) {
-        <a class="card cat-card" [routerLink]="['/catalogo']" [queryParams]="{ categoriaId: cat.id }">
+        <a class="card cat-card" [routerLink]="['/analizador']" [queryParams]="{ categoriaId: cat.id }">
           <h3>{{ cat.nombre }}</h3>
           <span class="muted">Ver productos →</span>
         </a>

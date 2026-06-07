@@ -7,8 +7,7 @@
 
     <nav class="nav">
       <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Inicio</a>
-      <a routerLink="/catalogo" routerLinkActive="active">Catálogo</a>
-      <a routerLink="/precios" routerLinkActive="active">Precios</a>
+      <a routerLink="/analizador" routerLinkActive="active">Analizador de precios</a>
       @if (auth.isAdmin()) {
         <a routerLink="/admin" routerLinkActive="active">Admin</a>
       }

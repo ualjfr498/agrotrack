@@ -1,8 +1,11 @@
 # ── Fase 1: compilación Angular ────────────────────────────────────────────
-FROM node:20-alpine AS build
+# node:22 porque Angular 21 requiere Node 22+. Variante "slim" (Debian/glibc)
+# en vez de alpine (musl): los binarios nativos de la toolchain de build
+# (esbuild) son glibc y dan menos problemas aquí.
+FROM node:22-slim AS build
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci --quiet
+RUN npm ci
 COPY . .
 RUN npm run build -- --configuration production
 

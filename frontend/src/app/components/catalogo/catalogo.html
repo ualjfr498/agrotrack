@@ -1,7 +1,7 @@
 <div class="container">
   <header class="page-header">
-    <h1>Catálogo de productos</h1>
-    <p class="muted">Frutas y hortalizas con seguimiento de precio en mercados mayoristas.</p>
+    <h1>Analizador de precios</h1>
+    <p class="muted">Elige un producto para ver la evolución de su precio en los cinco mercados mayoristas.</p>
   </header>
 
   @if (loading()) {
@@ -9,26 +9,35 @@
   } @else if (error(); as msg) {
     <div class="alert alert-error">{{ msg }}</div>
   } @else {
-    <div class="filters">
-      <button
-        class="chip"
-        [class.active]="categoriaSeleccionada() === null"
-        (click)="filtrar(null)">
-        Todos ({{ productos().length }})
-      </button>
-      @for (cat of categorias(); track cat.id) {
+    <div class="toolbar">
+      <div class="filters">
         <button
           class="chip"
-          [class.active]="categoriaSeleccionada() === cat.id"
-          (click)="filtrar(cat.id)">
-          {{ cat.nombre }}
+          [class.active]="categoriaSeleccionada() === null"
+          (click)="filtrar(null)">
+          Todos ({{ productos().length }})
         </button>
-      }
+        @for (cat of categorias(); track cat.id) {
+          <button
+            class="chip"
+            [class.active]="categoriaSeleccionada() === cat.id"
+            (click)="filtrar(cat.id)">
+            {{ cat.nombre }}
+          </button>
+        }
+      </div>
+
+      <input
+        class="search"
+        type="search"
+        placeholder="Buscar producto…"
+        [value]="busqueda()"
+        (input)="buscar($any($event.target).value)" />
     </div>
 
     <div class="grid">
       @for (p of productosFiltrados(); track p.id) {
-        <a class="card producto-card" [routerLink]="['/catalogo', p.id]">
+        <a class="card producto-card" [routerLink]="['/analizador', p.id]">
           <span class="badge">{{ p.categoria.nombre }}</span>
           <h3>{{ p.nombre }}</h3>
           @if (p.descripcion) {
@@ -36,7 +45,7 @@
           }
         </a>
       } @empty {
-        <p class="muted">No hay productos en esta categoría.</p>
+        <p class="muted">No se encontraron productos con esos filtros.</p>
       }
     </div>
   }

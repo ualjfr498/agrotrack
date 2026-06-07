@@ -15,17 +15,17 @@ export const routes: Routes = [
     loadComponent: () => import('./auth/register/register').then(m => m.Register)
   },
   {
-    path: 'catalogo',
+    path: 'analizador',
     loadComponent: () => import('./components/catalogo/catalogo').then(m => m.Catalogo)
   },
   {
-    path: 'catalogo/:id',
+    path: 'analizador/:id',
     loadComponent: () => import('./components/catalogo-detalle/catalogo-detalle').then(m => m.CatalogoDetalle)
   },
-  {
-    path: 'precios',
-    loadComponent: () => import('./components/precios/precios').then(m => m.Precios)
-  },
+  // Compatibilidad con rutas antiguas: catálogo y precios se unificaron en el analizador.
+  { path: 'catalogo', redirectTo: 'analizador', pathMatch: 'full' },
+  { path: 'catalogo/:id', redirectTo: 'analizador/:id' },
+  { path: 'precios', redirectTo: 'analizador', pathMatch: 'full' },
   {
     path: 'admin',
     canActivate: [adminGuard],

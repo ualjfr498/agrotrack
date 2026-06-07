@@ -22,6 +22,10 @@ public class ProductoService {
     private final ProductoRepository productoRepo;
     private final CategoriaRepository categoriaRepo;
 
+    // readOnly = true: abre una sesión Hibernate durante el método para que el
+    // mapeo a ProductoResponse pueda inicializar la categoría (LAZY) sin saltar
+    // LazyInitializationException (open-in-view está desactivado).
+    @Transactional(readOnly = true)
     public List<ProductoResponse> listar(Optional<Long> categoriaId) {
         List<Producto> productos = categoriaId
             .map(productoRepo::findByCategoriaId)
@@ -29,6 +33,7 @@ public class ProductoService {
         return productos.stream().map(ProductoResponse::from).toList();
     }
 
+    @Transactional(readOnly = true)
     public ProductoResponse obtener(Long id) {
         return productoRepo.findById(id)
             .map(ProductoResponse::from)

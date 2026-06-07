@@ -1,0 +1,10 @@
+# No copiar artefactos locales al contexto de build de Docker.
+# node_modules es lo crítico: contiene binarios nativos (esbuild) compilados
+# para macOS; dentro del contenedor Linux deben reinstalarse con `npm ci`.
+node_modules
+dist
+.angular
+npm-debug.log*
+Dockerfile
+.dockerignore
+.git

@@ -19,7 +19,7 @@ spring:
       api-key: ${SPRING_AI_OPENAI_API_KEY:lm-studio}   # LM Studio ignora el valor, Spring AI exige string no vacío
       chat:
         options:
-          model: ${SPRING_AI_OPENAI_CHAT_MODEL:qwen2.5-7b-instruct}
+          model: ${SPRING_AI_OPENAI_CHAT_MODEL:qwen/qwen3.5-9b}
           temperature: 0.3
     # ── Cliente MCP que descubre y consume las tools del mcp-server ──
     mcp:

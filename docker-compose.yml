@@ -29,7 +29,7 @@ services:
       # vía host.docker.internal (Mac/Windows). El modelo debe estar
       # cargado y "Serve on Local Network" activo en LM Studio.
       - SPRING_AI_OPENAI_BASE_URL=http://host.docker.internal:1234
-      - SPRING_AI_OPENAI_CHAT_MODEL=qwen2.5-7b-instruct
+      - SPRING_AI_OPENAI_CHAT_MODEL=qwen/qwen3.5-9b
       - SPRING_AI_OPENAI_API_KEY=lm-studio
       # Conexión al mcp-server por la red interna de Docker
       - AGROTRACK_MCP_URL=http://mcp-server:8081
@@ -66,8 +66,6 @@ services:
       - "80:80"
     depends_on:
       - backend
-    profiles:
-      - frontend
 
 volumes:
   mysql_data:

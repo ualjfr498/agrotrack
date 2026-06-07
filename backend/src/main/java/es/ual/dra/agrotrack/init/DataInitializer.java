@@ -23,10 +23,11 @@ import java.util.List;
  * Idempotente: si ya hay categorías en BD, no hace nada. Para re-sembrar,
  * vaciar la BD primero (drop schema o `docker-compose down -v`).
  *
- * Nota: los nombres de producto deben coincidir EXACTAMENTE con los que
- * Mercasa publica en su tabla de precios. El ScrapingService los usa
- * como clave de mapeo. Revisar contra mercasa.es si el scraper deja
- * productos sin precios asociados.
+ * Nota: los nombres de producto deben coincidir con los que Mercasa publica
+ * en su tabla de precios, pero el ScrapingService los compara en minúsculas,
+ * así que la capitalización aquí es libre (se usa sentence-case para mostrarlos
+ * bien en la UI). Revisar contra mercasa.es si el scraper deja productos sin
+ * precios asociados.
  */
 @Component
 @RequiredArgsConstructor
@@ -38,22 +39,22 @@ public class DataInitializer implements ApplicationRunner {
     private final ProductoRepository productoRepo;
 
     private static final List<String> FRUTAS = List.of(
-        "aguacate", "albaricoques", "caqui", "castañas", "cerezas",
-        "chirimoyas", "ciruelas", "fresones", "higos", "kiwi",
-        "limones", "mandarina clementina", "mandarinas", "mango",
-        "manzana golden", "manzana roja", "manzana starking",
-        "melocotones", "melón piel de sapo", "naranja navel",
-        "naranja navelina", "nectarinas", "nísperos", "papaya",
-        "pera blanquilla", "pera ercolini", "piñas", "plátanos",
-        "pomelos", "sandías", "uva blanca", "uva italia", "uva moscatel"
+        "Aguacate", "Albaricoques", "Caqui", "Castañas", "Cerezas",
+        "Chirimoyas", "Ciruelas", "Fresones", "Higos", "Kiwi",
+        "Limones", "Mandarina clementina", "Mandarinas", "Mango",
+        "Manzana golden", "Manzana roja", "Manzana starking",
+        "Melocotones", "Melón piel de sapo", "Naranja navel",
+        "Naranja navelina", "Nectarinas", "Nísperos", "Papaya",
+        "Pera blanquilla", "Pera ercolini", "Piñas", "Plátanos",
+        "Pomelos", "Sandías", "Uva blanca", "Uva italia", "Uva moscatel"
     );
 
     private static final List<String> HORTALIZAS = List.of(
-        "ajo", "alcachofas", "berenjenas", "brócoli", "calabacines",
-        "calabaza", "cebollas", "coliflor", "endivia", "escarola",
-        "espárragos", "judías verdes", "lechugas", "lombarda",
-        "patatas", "pepinos", "pimientos verdes", "puerro", "repollo",
-        "tomate maduro", "tomate verde", "zanahorias"
+        "Ajo", "Alcachofas", "Berenjenas", "Brócoli", "Calabacines",
+        "Calabaza", "Cebollas", "Coliflor", "Endivia", "Escarola",
+        "Espárragos", "Judías verdes", "Lechugas", "Lombarda",
+        "Patatas", "Pepinos", "Pimientos verdes", "Puerro", "Repollo",
+        "Tomate maduro", "Tomate verde", "Zanahorias"
     );
 
     private static final List<MercadoMayorista> MERCADOS = List.of(

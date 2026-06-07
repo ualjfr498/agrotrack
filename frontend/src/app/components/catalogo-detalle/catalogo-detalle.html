@@ -3,9 +3,9 @@
     <p class="muted">Cargando…</p>
   } @else if (error(); as msg) {
     <div class="alert alert-error">{{ msg }}</div>
-    <a routerLink="/catalogo">← Volver al catálogo</a>
+    <a routerLink="/analizador">← Volver al analizador</a>
   } @else if (producto(); as p) {
-    <a routerLink="/catalogo" class="back-link">← Volver al catálogo</a>
+    <a routerLink="/analizador" class="back-link">← Volver al analizador</a>
 
     <header class="detalle-header">
       <span class="badge">{{ p.categoria.nombre }}</span>
@@ -34,11 +34,19 @@
       }
     </section>
 
-    <section>
-      <h2>Historial de precios</h2>
-      @if (precios().length === 0) {
-        <p class="muted">No hay precios registrados todavía para este producto.</p>
-      } @else {
+    @if (precios().length === 0) {
+      <p class="muted">No hay precios registrados todavía para este producto (probablemente no es de temporada).</p>
+    } @else {
+      <section>
+        <h2>Evolución por mercado</h2>
+        <p class="muted">Pulsa un mercado en la leyenda para ocultarlo o aislarlo.</p>
+        <div class="card chart-card">
+          <canvas #priceChart></canvas>
+        </div>
+      </section>
+
+      <section>
+        <h2>Historial de precios</h2>
         <div class="card">
           <table>
             <thead>
@@ -59,7 +67,7 @@
             </tbody>
           </table>
         </div>
-      }
-    </section>
+      </section>
+    }
   }
 </div>
