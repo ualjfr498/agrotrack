@@ -5,6 +5,7 @@ import es.ual.dra.agrotrack.dto.response.ParcelaResponse;
 import es.ual.dra.agrotrack.model.entity.AppUser;
 import es.ual.dra.agrotrack.model.entity.Parcela;
 import es.ual.dra.agrotrack.repository.AppUserRepository;
+import es.ual.dra.agrotrack.repository.CultivoParcelaRepository;
 import es.ual.dra.agrotrack.repository.ParcelaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -26,6 +27,7 @@ public class ParcelaService {
 
     private final ParcelaRepository parcelaRepo;
     private final AppUserRepository userRepo;
+    private final CultivoParcelaRepository cultivoRepo;
 
     public List<ParcelaResponse> listarMias(Long usuarioId) {
         return parcelaRepo.findByUsuarioId(usuarioId).stream()
@@ -43,7 +45,27 @@ public class ParcelaService {
         p.setNombre(req.nombre());
         p.setSuperficieM2(req.superficieM2());
         p.setDescripcion(req.descripcion());
+        p.setImagen(req.imagen());
         return ParcelaResponse.from(parcelaRepo.save(p));
+    }
+
+    /** Edita una parcela propia del usuario. */
+    @Transactional
+    public ParcelaResponse editar(Long usuarioId, Long parcelaId, ParcelaRequest req) {
+        Parcela p = obtenerPropia(usuarioId, parcelaId);
+        p.setNombre(req.nombre());
+        p.setSuperficieM2(req.superficieM2());
+        p.setDescripcion(req.descripcion());
+        p.setImagen(req.imagen());
+        return ParcelaResponse.from(parcelaRepo.save(p));
+    }
+
+    /** Elimina una parcela propia y, en cascada, sus cultivos. */
+    @Transactional
+    public void eliminar(Long usuarioId, Long parcelaId) {
+        Parcela p = obtenerPropia(usuarioId, parcelaId);
+        cultivoRepo.deleteByParcelaId(p.getId());
+        parcelaRepo.delete(p);
     }
 
     /** Recupera una parcela verificando que pertenece al usuario; si no, 404. */

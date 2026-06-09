@@ -1,0 +1,85 @@
+<div class="container">
+  <header class="page-header">
+    <h1>Asistente IA</h1>
+    <p class="muted">Pregunta sobre precios de mercado o tus cultivos. El asistente consulta datos reales.</p>
+  </header>
+
+  @if (!auth.isAuthenticated()) {
+    <div class="alert alert-info">
+      Estás usando el asistente como invitado: puedes consultar precios y catálogo.
+      <a routerLink="/register">Regístrate</a> para gestionar tus parcelas y cultivos,
+      recibir consejos personalizados y guardar tus conversaciones.
+    </div>
+  }
+
+  <div class="asistente-layout">
+    <!-- ─── Lista de conversaciones (solo registrados) ─── -->
+    @if (auth.isAuthenticated()) {
+      <aside class="conversaciones card">
+        <button class="btn btn-primary btn-sm nuevo-chat" (click)="nuevoChat()">+ Nuevo chat</button>
+        @if (conversaciones().length === 0) {
+          <p class="muted small">Aún no tienes conversaciones guardadas.</p>
+        } @else {
+          <ul class="conv-list">
+            @for (c of conversaciones(); track c.id) {
+              <li
+                class="conv-item"
+                [class.activa]="c.id === conversacionActualId()"
+                (click)="abrirConversacion(c.id)">
+                <span class="conv-titulo">{{ c.titulo }}</span>
+                <button class="conv-eliminar" title="Eliminar" (click)="eliminarConversacion(c, $event)">✕</button>
+              </li>
+            }
+          </ul>
+        }
+      </aside>
+    }
+
+    <!-- ─── Chat ─── -->
+    <div class="chat card">
+      <div class="mensajes">
+        @if (mensajes().length === 0) {
+          <div class="vacio">
+            <p class="muted">Empieza con una pregunta:</p>
+            <div class="sugerencias">
+              @for (s of sugerencias(); track s) {
+                <button class="chip" (click)="usarSugerencia(s)">{{ s }}</button>
+              }
+            </div>
+          </div>
+        }
+
+        @for (m of mensajes(); track $index) {
+          <div class="mensaje" [class.user]="m.rol === 'user'" [class.assistant]="m.rol === 'assistant'">
+            <span class="autor">{{ m.rol === 'user' ? 'Tú' : 'Asistente' }}</span>
+            <p>{{ m.texto }}</p>
+          </div>
+        }
+
+        @if (enviando()) {
+          <div class="mensaje assistant">
+            <span class="autor">Asistente</span>
+            <p class="pensando">Pensando… (puede tardar unos segundos)</p>
+          </div>
+        }
+      </div>
+
+      @if (error(); as msg) {
+        <div class="alert alert-error">{{ msg }}</div>
+      }
+
+      <form class="entrada" (ngSubmit)="enviar()">
+        <input
+          type="text"
+          placeholder="Escribe tu pregunta…"
+          [ngModel]="entrada()"
+          (ngModelChange)="entrada.set($event)"
+          name="entrada"
+          [disabled]="enviando()" />
+        <button type="submit" class="btn btn-primary" [disabled]="enviando() || entrada().trim() === ''">
+          Enviar
+        </button>
+      </form>
+    </div>
+  </div>
+</div>

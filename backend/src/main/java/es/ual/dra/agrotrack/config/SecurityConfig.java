@@ -46,6 +46,11 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/productos/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/precios/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/categorias/**").permitAll()
+                // El asistente es público: un invitado puede consultar precios y
+                // catálogo. Sin identidad, las write/private-tools del mcp-server se
+                // rechazan solas (guarda source=backend + actingUser), así que un
+                // invitado no puede ver ni tocar parcelas/cultivos de nadie.
+                .requestMatchers(HttpMethod.POST, "/api/asistente/**").permitAll()
                 .anyRequest().authenticated()
             )
             // El service token se resuelve primero; si no hay, cae al flujo JWT.

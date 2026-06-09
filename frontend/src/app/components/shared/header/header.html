@@ -8,6 +8,10 @@
     <nav class="nav">
       <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Inicio</a>
       <a routerLink="/analizador" routerLinkActive="active">Analizador de precios</a>
+      <a routerLink="/asistente" routerLinkActive="active">Asistente</a>
+      @if (auth.isAuthenticated()) {
+        <a routerLink="/mis-parcelas" routerLinkActive="active">Mis parcelas</a>
+      }
       @if (auth.isAdmin()) {
         <a routerLink="/admin" routerLinkActive="active">Admin</a>
       }
@@ -15,7 +19,14 @@
 
     <div class="auth-area">
       @if (auth.isAuthenticated()) {
-        <span class="user-email">{{ auth.currentUser()?.email }}</span>
+        <a routerLink="/perfil" routerLinkActive="active" class="user-chip" title="Mi perfil">
+          @if (foto(); as f) {
+            <img class="user-avatar" [src]="f" alt="Perfil" />
+          } @else {
+            <span class="user-avatar user-avatar-placeholder">🧑‍🌾</span>
+          }
+          <span class="user-email">{{ auth.currentUser()?.email }}</span>
+        </a>
         <button class="btn btn-secondary btn-sm" (click)="logout()">Salir</button>
       } @else {
         <a routerLink="/login" class="btn btn-secondary btn-sm">Entrar</a>

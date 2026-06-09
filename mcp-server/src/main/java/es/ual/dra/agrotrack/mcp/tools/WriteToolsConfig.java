@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -43,6 +44,7 @@ public class WriteToolsConfig {
 
     private final BackendClient backend;
     private final ObjectMapper objectMapper;
+    private final CatalogoResolver resolver;
 
     @Bean
     public List<SyncToolSpecification> agroWriteTools() {
@@ -60,14 +62,13 @@ public class WriteToolsConfig {
         var schema = objectSchema(
             Map.of(
                 "nombre", prop("string", "Nombre de la parcela"),
-                "superficieM2", prop("number", "Superficie en metros cuadrados (opcional)"),
-                "descripcion", prop("string", "Descripción libre (opcional)")
+                "superficieM2", propNullable("number", "Superficie en metros cuadrados (opcional)"),
+                "descripcion", propNullable("string", "Descripción libre (opcional)")
             ),
             List.of("nombre"));
         return SyncToolSpecification.builder()
             .tool(tool("registrarParcela",
-                "Registra una nueva parcela para el agricultor autenticado. "
-                + "Requiere identidad; solo funciona desde el asistente de la app web.",
+                "Registra una parcela del usuario.",
                 schema))
             .callHandler(this::registrarParcela)
             .build();
@@ -76,8 +77,7 @@ public class WriteToolsConfig {
     private SyncToolSpecification misParcelasSpec() {
         return SyncToolSpecification.builder()
             .tool(tool("misParcelas",
-                "Lista las parcelas del agricultor autenticado. "
-                + "Requiere identidad; solo funciona desde el asistente de la app web.",
+                "Lista las parcelas del usuario.",
                 objectSchema(Map.of(), List.of())))
             .callHandler(this::misParcelas)
             .build();
@@ -86,17 +86,18 @@ public class WriteToolsConfig {
     private SyncToolSpecification registrarCultivoSpec() {
         var schema = objectSchema(
             Map.of(
-                "parcelaId", prop("integer", "Id de la parcela donde se siembra"),
-                "productoId", prop("integer", "Id del producto (fruta u hortaliza) que se cultiva"),
+                "parcela", prop("string", "Nombre de la parcela donde se siembra"),
+                "producto", prop("string", "Nombre del producto (fruta u hortaliza) que se cultiva"),
                 "fechaSiembra", prop("string", "Fecha de siembra en formato ISO yyyy-MM-dd"),
-                "estado", prop("string", "Estado del cultivo: SEMBRADO, CRECIENDO, COSECHADO o RETIRADO (opcional)"),
-                "notas", prop("string", "Notas libres (opcional)")
+                "estado", propNullable("string", "Estado del cultivo: SEMBRADO, CRECIENDO, COSECHADO o RETIRADO (opcional)"),
+                "notas", propNullable("string", "Notas libres (opcional)")
             ),
-            List.of("parcelaId", "productoId", "fechaSiembra"));
+            List.of("parcela", "producto", "fechaSiembra"));
         return SyncToolSpecification.builder()
             .tool(tool("registrarCultivo",
-                "Registra un cultivo en una parcela del agricultor autenticado. "
-                + "Requiere identidad; solo funciona desde el asistente de la app web.",
+                "Registra un cultivo en una parcela del usuario. Recibe los NOMBRES de la "
+                + "parcela y del producto tal como los diga el usuario; el sistema resuelve "
+                + "internamente sus identificadores.",
                 schema))
             .callHandler(this::registrarCultivo)
             .build();
@@ -105,8 +106,7 @@ public class WriteToolsConfig {
     private SyncToolSpecification misCultivosSpec() {
         return SyncToolSpecification.builder()
             .tool(tool("misCultivos",
-                "Lista los cultivos del agricultor autenticado en todas sus parcelas. "
-                + "Requiere identidad; solo funciona desde el asistente de la app web.",
+                "Lista los cultivos del usuario.",
                 objectSchema(Map.of(), List.of())))
             .callHandler(this::misCultivos)
             .build();
@@ -139,11 +139,30 @@ public class WriteToolsConfig {
         String actingUser = actingUserOrNull(req.meta());
         if (actingUser == null) return denied();
         try {
-            var body = objectMapper.convertValue(req.arguments(), CultivoCreateData.class);
+            Map<String, Object> args = req.arguments();
+            // Resolución determinista de nombre→id (nunca la hace el modelo).
+            Long parcelaId = resolver.resolverParcelaId(actingUser, asString(args.get("parcela")));
+            Long productoId = resolver.resolverProductoId(asString(args.get("producto")));
+            String fecha = asString(args.get("fechaSiembra"));
+            var body = new CultivoCreateData(
+                parcelaId,
+                productoId,
+                fecha != null ? LocalDate.parse(fecha) : null,
+                asString(args.get("estado")),
+                asString(args.get("notas"))
+            );
             return ok(backend.crearCultivo(actingUser, body));
+        } catch (CatalogoResolver.ResolucionException e) {
+            // No es un fallo técnico: es información para que el modelo pregunte o
+            // avise al usuario, sin registrar nada incorrecto.
+            return new CallToolResult(e.getMessage(), true);
         } catch (Exception e) {
             return error("registrarCultivo", e);
         }
+    }
+
+    private String asString(Object o) {
+        return (o instanceof String s && !s.isBlank()) ? s : null;
     }
 
     private CallToolResult misCultivos(McpSyncServerExchange ex, CallToolRequest req) {
@@ -207,5 +226,14 @@ public class WriteToolsConfig {
 
     private Map<String, Object> prop(String type, String description) {
         return Map.of("type", type, "description", description);
+    }
+
+    /**
+     * Propiedad opcional: el tipo admite null además del tipo base, para que los
+     * proveedores que validan el schema de forma estricta (Groq) acepten que el
+     * modelo pase el valor como null cuando el usuario no lo indica.
+     */
+    private Map<String, Object> propNullable(String type, String description) {
+        return Map.of("type", List.of(type, "null"), "description", description);
     }
 }

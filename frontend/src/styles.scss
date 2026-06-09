@@ -104,6 +104,11 @@ button {
     background-color: var(--color-danger);
     color: white;
   }
+
+  &.btn-sm {
+    padding: var(--space-1) var(--space-3);
+    font-size: 0.85rem;
+  }
 }
 
 .card {
@@ -168,10 +173,39 @@ button {
     color: var(--color-success);
     border: 1px solid #bbf7d0;
   }
+
+  &.alert-info {
+    background-color: var(--color-primary-light);
+    color: var(--color-primary-dark);
+    border: 1px solid #cfe6d4;
+
+    a { font-weight: 600; }
+  }
 }
 
 .muted {
   color: var(--color-text-muted);
+}
+
+// Contenedor más estrecho para vistas centradas (p. ej. el chat del asistente).
+.container.narrow {
+  max-width: 760px;
+}
+
+// Vista previa de imagen subida (registro, perfil, parcela).
+.foto-preview {
+  margin-top: var(--space-2);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+
+  img {
+    width: 72px;
+    height: 72px;
+    object-fit: cover;
+    border-radius: 50%;
+    border: 1px solid var(--color-border);
+  }
 }
 
 .badge {

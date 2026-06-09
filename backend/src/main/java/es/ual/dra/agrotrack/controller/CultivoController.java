@@ -40,4 +40,12 @@ public class CultivoController {
         CultivoResponse creado = cultivoService.crear(user.getId(), req);
         return ResponseEntity.status(HttpStatus.CREATED).body(creado);
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> eliminar(
+            @AuthenticationPrincipal AppUserPrincipal user,
+            @PathVariable Long id) {
+        cultivoService.eliminar(user.getId(), id);
+        return ResponseEntity.noContent().build();
+    }
 }

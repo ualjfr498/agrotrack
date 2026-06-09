@@ -1,0 +1,150 @@
+<div class="container">
+  <header class="page-header">
+    <h1>Mis parcelas</h1>
+    <p class="muted">Gestiona tus parcelas y los cultivos que tienes plantados en cada una.</p>
+  </header>
+
+  @if (error(); as msg) {
+    <div class="alert alert-error">{{ msg }}</div>
+  }
+
+  @if (loading()) {
+    <p class="muted">Cargando…</p>
+  } @else {
+    <div class="layout">
+      <!-- ─── Formularios ─── -->
+      <aside class="forms">
+        <section class="card" [class.editando]="editandoId() !== null">
+          @if (editandoId() !== null) {
+            <span class="modo-edicion">✏️ Editando</span>
+            <h2>Editar parcela</h2>
+          } @else {
+            <h2>Nueva parcela</h2>
+          }
+          <form [formGroup]="parcelaForm" (ngSubmit)="guardarParcela()">
+            <div class="form-field">
+              <label for="p-nombre">Nombre</label>
+              <input id="p-nombre" type="text" formControlName="nombre" placeholder="Huerta sur" />
+            </div>
+            <div class="form-field">
+              <label for="p-sup">Superficie (m²)</label>
+              <input id="p-sup" type="number" formControlName="superficieM2" min="0" step="0.01" />
+            </div>
+            <div class="form-field">
+              <label for="p-desc">Descripción</label>
+              <textarea id="p-desc" formControlName="descripcion" rows="3"
+                placeholder="Describe tu terreno (tipo de suelo, regadío o secano, orientación…). Cuantos más detalles, mejores consejos te dará el asistente."></textarea>
+            </div>
+            <div class="form-field">
+              <label for="p-img">Imagen (opcional)</label>
+              <input id="p-img" type="file" accept="image/*" (change)="onImagen($event)" />
+              @if (imagenParcela(); as img) {
+                <div class="img-preview">
+                  <img [src]="img" alt="Vista previa de la parcela" />
+                  <button type="button" class="btn btn-secondary btn-sm" (click)="quitarImagen()">Quitar imagen</button>
+                </div>
+              }
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">
+                {{ editandoId() === null ? 'Crear parcela' : 'Guardar cambios' }}
+              </button>
+              @if (editandoId() !== null) {
+                <button type="button" class="btn btn-secondary" (click)="cancelarEdicion()">Cancelar</button>
+              }
+            </div>
+          </form>
+        </section>
+
+        <section class="card">
+          <h2>Registrar cultivo</h2>
+          @if (parcelas().length === 0) {
+            <p class="muted">Crea primero una parcela.</p>
+          } @else {
+            <form [formGroup]="cultivoForm" (ngSubmit)="crearCultivo()">
+              <div class="form-field">
+                <label for="c-parcela">Parcela</label>
+                <select id="c-parcela" formControlName="parcelaId">
+                  <option [ngValue]="null" disabled>Elige parcela…</option>
+                  @for (p of parcelas(); track p.id) {
+                    <option [ngValue]="p.id">{{ p.nombre }}</option>
+                  }
+                </select>
+              </div>
+              <div class="form-field">
+                <label for="c-prod">Producto</label>
+                <select id="c-prod" formControlName="productoId">
+                  <option [ngValue]="null" disabled>Elige producto…</option>
+                  @for (prod of productos(); track prod.id) {
+                    <option [ngValue]="prod.id">{{ prod.nombre }}</option>
+                  }
+                </select>
+              </div>
+              <div class="form-field">
+                <label for="c-fecha">Fecha de siembra</label>
+                <input id="c-fecha" type="date" formControlName="fechaSiembra" />
+              </div>
+              <div class="form-field">
+                <label for="c-estado">Estado</label>
+                <select id="c-estado" formControlName="estado">
+                  @for (e of estados; track e) {
+                    <option [ngValue]="e">{{ e }}</option>
+                  }
+                </select>
+              </div>
+              <div class="form-field">
+                <label for="c-notas">Notas</label>
+                <textarea id="c-notas" formControlName="notas" rows="2"></textarea>
+              </div>
+              <button type="submit" class="btn btn-primary">Registrar cultivo</button>
+            </form>
+          }
+        </section>
+      </aside>
+
+      <!-- ─── Lista de parcelas ─── -->
+      <section class="parcelas">
+        @for (p of parcelas(); track p.id) {
+          <article class="card parcela">
+            @if (p.imagen) {
+              <img class="parcela-img" [src]="p.imagen" [alt]="'Imagen de ' + p.nombre" />
+            }
+            <header class="parcela-head">
+              <h3>{{ p.nombre }}</h3>
+              <div class="parcela-head-right">
+                @if (p.superficieM2) {
+                  <span class="badge">{{ p.superficieM2 }} m²</span>
+                }
+                <button type="button" class="btn btn-secondary btn-sm" (click)="editar(p)">Editar</button>
+                <button type="button" class="btn btn-danger btn-sm" (click)="eliminarParcela(p)">Eliminar</button>
+              </div>
+            </header>
+            @if (p.descripcion) {
+              <p class="muted">{{ p.descripcion }}</p>
+            }
+
+            <h4 class="seccion-label">Cultivos</h4>
+            @if (cultivosDe(p.id).length === 0) {
+              <p><span class="barbecho">En barbecho</span> <span class="muted small">— sin cultivos plantados</span></p>
+            } @else {
+              <ul class="cultivos">
+                @for (c of cultivosDe(p.id); track c.id) {
+                  <li>
+                    <a class="cultivo-nombre" [routerLink]="['/analizador', c.productoId]"
+                       title="Ver precios de {{ c.productoNombre }}">{{ c.productoNombre }}</a>
+                    <span class="badge estado" [attr.data-estado]="c.estado">{{ c.estado }}</span>
+                    <span class="muted small">sembrado {{ c.fechaSiembra }}</span>
+                    <button type="button" class="cultivo-eliminar" title="Eliminar cultivo"
+                            (click)="eliminarCultivo(c)">✕</button>
+                  </li>
+                }
+              </ul>
+            }
+          </article>
+        } @empty {
+          <p class="muted">Aún no tienes parcelas. Crea la primera con el formulario.</p>
+        }
+      </section>
+    </div>
+  }
+</div>

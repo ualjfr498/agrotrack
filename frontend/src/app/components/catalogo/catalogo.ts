@@ -63,4 +63,13 @@ export class Catalogo {
   buscar(valor: string): void {
     this.busqueda.set(valor);
   }
+
+  /**
+   * Muestra la categoría en singular para la etiqueta del producto:
+   * "Frutas" → "Fruta", "Hortalizas" → "Hortaliza".
+   */
+  categoriaSingular(nombre: string): string {
+    const limpio = nombre.trim();
+    return limpio.toLowerCase().endsWith('s') ? limpio.slice(0, -1) : limpio;
+  }
 }

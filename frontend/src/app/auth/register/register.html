@@ -9,6 +9,22 @@
 
     <form [formGroup]="form" (ngSubmit)="submit()">
       <div class="form-field">
+        <label for="nombre">Nombre</label>
+        <input id="nombre" type="text" formControlName="nombre" autocomplete="given-name" />
+        @if (form.controls.nombre.touched && form.controls.nombre.errors?.['required']) {
+          <span class="error">El nombre es obligatorio.</span>
+        }
+      </div>
+
+      <div class="form-field">
+        <label for="apellidos">Apellidos</label>
+        <input id="apellidos" type="text" formControlName="apellidos" autocomplete="family-name" />
+        @if (form.controls.apellidos.touched && form.controls.apellidos.errors?.['required']) {
+          <span class="error">Los apellidos son obligatorios.</span>
+        }
+      </div>
+
+      <div class="form-field">
         <label for="email">Email</label>
         <input id="email" type="email" formControlName="email" autocomplete="email" />
         @if (form.controls.email.touched && form.controls.email.errors?.['email']) {
@@ -21,6 +37,17 @@
         <input id="password" type="password" formControlName="password" autocomplete="new-password" />
         @if (form.controls.password.touched && form.controls.password.errors?.['minlength']) {
           <span class="error">Mínimo 8 caracteres.</span>
+        }
+      </div>
+
+      <div class="form-field">
+        <label for="foto">Foto de perfil (opcional)</label>
+        <input id="foto" type="file" accept="image/*" (change)="onFoto($event)" />
+        @if (foto(); as f) {
+          <div class="foto-preview">
+            <img [src]="f" alt="Vista previa de la foto" />
+            <button type="button" class="btn btn-secondary btn-sm" (click)="quitarFoto()">Quitar</button>
+          </div>
         }
       </div>
 

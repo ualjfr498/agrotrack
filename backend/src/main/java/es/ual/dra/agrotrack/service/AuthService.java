@@ -1,8 +1,10 @@
 package es.ual.dra.agrotrack.service;
 
 import es.ual.dra.agrotrack.dto.request.LoginRequest;
+import es.ual.dra.agrotrack.dto.request.PerfilUpdateRequest;
 import es.ual.dra.agrotrack.dto.request.RegisterRequest;
 import es.ual.dra.agrotrack.dto.response.JwtResponse;
+import es.ual.dra.agrotrack.dto.response.PerfilResponse;
 import es.ual.dra.agrotrack.model.entity.AppUser;
 import es.ual.dra.agrotrack.model.enums.Rol;
 import es.ual.dra.agrotrack.repository.AppUserRepository;
@@ -45,10 +47,29 @@ public class AuthService {
         AppUser user = new AppUser();
         user.setEmail(req.email());
         user.setPasswordHash(passwordEncoder.encode(req.password()));
+        user.setNombre(req.nombre());
+        user.setApellidos(req.apellidos());
+        user.setFoto(req.foto());
         user.setRol(Rol.AGRICULTOR);
         AppUser guardado = userRepo.save(user);
         log.info("Nuevo usuario registrado: {} (id={})", guardado.getEmail(), guardado.getId());
         return guardado;
+    }
+
+    public PerfilResponse obtenerPerfil(Long usuarioId) {
+        AppUser user = userRepo.findById(usuarioId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario no encontrado"));
+        return PerfilResponse.from(user);
+    }
+
+    @Transactional
+    public PerfilResponse editarPerfil(Long usuarioId, PerfilUpdateRequest req) {
+        AppUser user = userRepo.findById(usuarioId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario no encontrado"));
+        user.setNombre(req.nombre());
+        user.setApellidos(req.apellidos());
+        user.setFoto(req.foto());
+        return PerfilResponse.from(userRepo.save(user));
     }
 
     public JwtResponse login(LoginRequest req) {

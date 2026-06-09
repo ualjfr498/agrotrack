@@ -76,24 +76,22 @@ public class ServiceTokenFilter extends OncePerRequestFilter {
             return;
         }
 
+        // Con token válido: si viene X-Acting-User, autenticamos como ese usuario.
+        // Si NO viene, dejamos pasar SIN autenticar: así las lecturas públicas que
+        // hace el mcp-server (catálogo, precios) funcionan, y las rutas protegidas
+        // darán 403 por sí solas. (Exigir aquí el acting-user rompía las read-tools.)
         String actingUser = request.getHeader(ACTING_USER_HEADER);
-        if (actingUser == null || actingUser.isBlank()) {
-            // Token de servicio válido pero sin identidad de usuario: para las
-            // operaciones que requieren un usuario (parcelas, cultivos) esto no
-            // sirve. Lo rechazamos explícitamente.
-            unauthorized(response, "Falta X-Acting-User para una operación que requiere identidad");
-            return;
-        }
-
-        try {
-            UserDetails user = userDetailsService.loadUserByUsername(actingUser);
-            var auth = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
-            auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-            SecurityContextHolder.getContext().setAuthentication(auth);
-        } catch (UsernameNotFoundException e) {
-            log.warn("X-Acting-User desconocido: {}", actingUser);
-            unauthorized(response, "Usuario actuante desconocido");
-            return;
+        if (actingUser != null && !actingUser.isBlank()) {
+            try {
+                UserDetails user = userDetailsService.loadUserByUsername(actingUser);
+                var auth = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+                auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(auth);
+            } catch (UsernameNotFoundException e) {
+                log.warn("X-Acting-User desconocido: {}", actingUser);
+                unauthorized(response, "Usuario actuante desconocido");
+                return;
+            }
         }
 
         chain.doFilter(request, response);

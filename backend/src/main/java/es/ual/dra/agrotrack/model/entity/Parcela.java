@@ -32,6 +32,11 @@ public class Parcela {
     @Column(columnDefinition = "TEXT")
     private String descripcion;
 
+    // Imagen opcional de la parcela, guardada como data URL en base64
+    // (p. ej. "data:image/jpeg;base64,..."). LONGTEXT para no truncar.
+    @Column(columnDefinition = "LONGTEXT")
+    private String imagen;
+
     @Column(name = "fecha_creacion", nullable = false, updatable = false)
     private LocalDateTime fechaCreacion;
 

@@ -11,8 +11,8 @@
 **AgroTrack** es una aplicación web para agricultores que centraliza el seguimiento de precios mayoristas y la gestión personal de cultivos. La plataforma cubre tres necesidades reales del sector:
 
 1. **Precios mayoristas actualizados** — scraping automatizado de [mercasa.es](https://www.mercasa.es/precios-y-mercados-mayoristas/) dos veces por semana mediante `@Scheduled`. Solo se incluyen los productos de los que Mercasa publica precio real: **frutas y hortalizas**.
-2. **Gestión del huerto personal** — el agricultor registra sus parcelas, asocia cultivos del catálogo existente y hace seguimiento del estado de cada uno.
-3. **Asistente IA experto en tendencias con MCP** — agente basado en Qwen 2.5 (servido localmente por LM Studio) que analiza el histórico real de precios de MySQL a través de un **MCP server independiente**. El agricultor recibe consejos sobre cuándo vender, cómo evoluciona el mercado y qué esperar la próxima semana. Todo el procesamiento ocurre en infraestructura propia, sin enviar datos a servicios externos.
+2. **Gestión del huerto personal** — el agricultor registra y edita sus parcelas (con imagen opcional), asocia cultivos del catálogo y hace seguimiento de cada uno; también gestiona su perfil (nombre, apellidos y foto). Todo desde la interfaz **o pidiéndoselo al asistente** en lenguaje natural.
+3. **Asistente IA experto en tendencias con MCP** — agente que analiza el histórico real de precios de MySQL a través de un **MCP server independiente**. Recibe consejos sobre cuándo y dónde vender, comparativas entre mercados y recomendaciones de siembra según el terreno. El proveedor de LLM es **hibridable por configuración** (LM Studio local, Groq o Gemini en la nube) sin tocar código. Las conversaciones se **persisten** para poder recuperarlas y continuarlas, y el asistente es **público** (un invitado consulta precios; las funciones sobre parcelas requieren registro).
 
 ---
 
@@ -24,13 +24,13 @@
 | Backend | Spring Boot + Java | 3.5 / Java 21 |
 | Base de datos | MySQL | 8.0 |
 | Scraping | Jsoup | 1.18+ |
-| IA — LLM | Spring AI + Qwen 2.5 (LM Studio en host) | spring-ai 1.1+ / qwen2.5-7b-instruct |
+| IA — LLM (hibridable) | Spring AI + proveedor OpenAI-compatible: LM Studio (Qwen, local) **o** Groq **o** Gemini | spring-ai 1.1+ |
 | IA — MCP Server | Spring AI MCP server (módulo aparte) | spring-ai 1.1+ |
 | IA — MCP Client | Spring AI MCP client (en backend) | spring-ai 1.1+ |
 | Automatización | Spring `@Scheduled` | — |
 | Autenticación | Spring Security + JWT | — |
 | Contenedores | Docker + Docker Compose | — |
-| Patrones de diseño | Repository, Service Facade, Strategy, Observer | — |
+| Patrones de diseño | Repository, Service Facade, Strategy, DTO | — |
 
 ---
 
@@ -51,7 +51,6 @@ agrotrack/
 │   │   │   ├── ProductoController.java
 │   │   │   ├── PrecioController.java
 │   │   │   ├── ParcelaController.java
-│   │   │   ├── AlertaController.java
 │   │   │   ├── AsistenteController.java
 │   │   │   ├── AdminController.java
 │   │   │   └── mcp/                             # Endpoints específicos para el MCP
@@ -65,8 +64,7 @@ agrotrack/
 │   │   │   ├── scraping/
 │   │   │   │   ├── ScrapingService.java         # Jsoup → Mercasa
 │   │   │   │   └── ScrapingScheduler.java       # @Scheduled lunes y jueves 07:00
-│   │   │   ├── AsistenteService.java            # ChatClient ↔ LM Studio (Qwen) + MCP client
-│   │   │   └── AlertaService.java               # Evalúa umbrales y persiste alertas disparadas
+│   │   │   └── AsistenteService.java            # ChatClient (proveedor hibridable) + MCP client
 │   │   ├── init/
 │   │   │   └── DataInitializer.java             # Pobla BD al arrancar
 │   │   └── security/
@@ -96,7 +94,7 @@ agrotrack/
 │   │   │   ├── precios/        # Gráficas históricas + análisis IA
 │   │   │   ├── asistente/      # Chat con el agente IA
 │   │   │   ├── mi-parcela/     # Gestión de parcelas y cultivos
-│   │   │   ├── alertas/        # Alertas de precio
+│   │   │   ├── perfil/         # Perfil del usuario (datos y foto)
 │   │   │   └── admin/          # Panel administración
 │   │   ├── services/
 │   │   └── models/
@@ -116,29 +114,32 @@ agrotrack/
 
 | Entidad | Descripción |
 |---|---|
-| `AppUser` | Usuario con rol AGRICULTOR o ADMIN |
+| `AppUser` | Usuario con rol AGRICULTOR o ADMIN. Incluye nombre, apellidos y foto (base64) |
 | `Categoria` | `FRUTAS` o `HORTALIZAS` — únicos con precio en Mercasa |
 | `Producto` | Ficha del cultivo pre-cargada por el `DataInitializer` |
 | `MercadoMayorista` | Mercamadrid, Mercabarna, Mercabilbao, Mercavalencia, Mercasevilla |
 | `PrecioMayorista` | Precio €/kg scrapeado por mercado, producto y fecha |
-| `Parcela` | Parcela personal del agricultor |
-| `CultivoParcela` | Asocia una parcela con un producto del catálogo existente |
-| `AlertaPrecio` | Umbral de precio personalizado por usuario y producto |
+| `Parcela` | Parcela personal del agricultor, con imagen opcional (base64) |
+| `CultivoParcela` | Asocia una parcela con un producto del catálogo (estado: SEMBRADO, CRECIENDO, COSECHADO, RETIRADO). Una parcela sin cultivos se considera *en barbecho* |
+| `Conversacion` | Chat persistido del asistente, por usuario, para recuperarlo y continuarlo |
+| `MensajeChat` | Mensaje (USER / ASSISTANT) dentro de una conversación |
 | `ScrapingLog` | Auditoría de cada ejecución del scraper |
 
 ### Relaciones
 
 ```
 AppUser          1 ── N  Parcela
+AppUser          1 ── N  Conversacion
 Parcela          1 ── N  CultivoParcela
+Conversacion     1 ── N  MensajeChat
 CultivoParcela   N ── 1  Producto        ← agricultor elige del catálogo existente
 Producto         N ── 1  Categoria
 Producto         1 ── N  PrecioMayorista
 MercadoMayorista 1 ── N  PrecioMayorista
-AppUser          1 ── N  AlertaPrecio
-AlertaPrecio     N ── 1  Producto
 ScrapingLog      (sin FK — registro independiente de auditoría)
 ```
+
+> El diagrama ER completo (Mermaid) está en [`docs/diagrams/`](docs/diagrams/).
 
 ### Catálogo inicial (DataInitializer)
 
@@ -154,7 +155,27 @@ Al arrancar por primera vez, `DataInitializer` puebla la BD con los productos ex
 
 ## 🤖 Asistente IA — Experto en tendencias de mercado vía MCP
 
-El asistente combina **Spring AI + Qwen 2.5** (servido por **LM Studio** corriendo en el host) con un **MCP server independiente** que expone las herramientas de acceso a datos. El backend actúa como **cliente MCP** y descubre las tools al arrancar — las mismas tools son consumibles también por cualquier otro cliente MCP (LM Studio chat UI, Claude Desktop, Cursor…) sin código adicional.
+El asistente combina **Spring AI** con un **MCP server independiente** que expone las herramientas de acceso a datos. El backend actúa como **cliente MCP** y descubre las tools al arrancar — las mismas tools son consumibles también por cualquier otro cliente MCP (LM Studio chat UI, Claude Desktop, Cursor…) sin código adicional.
+
+### Proveedor de LLM hibridable (sin tocar código)
+
+Todos los proveedores hablan el **protocolo OpenAI**, así que cambiar de uno a otro es solo editar tres variables en `.env` (ver [`.env.example`](.env.example)) y reiniciar el backend:
+
+| Proveedor | Dónde corre | Cuándo usarlo |
+|---|---|---|
+| **LM Studio** (Qwen) | Local, en el host | Privacidad total / offline; más lento según hardware |
+| **Groq** (`openai/gpt-oss-20b`) | Nube (free tier) | Rápido y fiable en tool-calling; ideal para demo |
+| **Gemini** (`gemini-2.5-flash`) | Nube (free tier) | Buena redacción; free tier muy limitado en peticiones |
+
+`docker-compose.yml` trae LM Studio como valor por defecto; el `.env` lo sobreescribe. No hace falta recompilar.
+
+### Conversaciones persistentes
+
+Las conversaciones de los usuarios registrados se **guardan en BD** (`Conversacion` + `MensajeChat`): se pueden listar, abrir, continuar y borrar desde una barra lateral. El **contexto** que se envía al modelo (últimos 10 mensajes) se reconstruye desde la BD en cada petición, de modo que la conversación sobrevive a reinicios del backend. Los invitados tienen un chat efímero (sin persistencia; el contexto lo aporta el frontend).
+
+### Resolución determinista de nombres
+
+Las tools que necesitan un producto o una parcela reciben su **nombre** (tal como lo dice el usuario), no un id. Un resolver del mcp-server convierte el nombre al id real contra los datos del backend, tolerando singular/plural y avisando si hay ambigüedad ("¿tomate maduro o tomate verde?"). Así el modelo nunca puede "inventar" un id y registrar el cultivo equivocado.
 
 ### Flujo completo
 
@@ -277,7 +298,6 @@ public void ejecutarScrapingYNotificar() {
     // 1. Jsoup parsea mercasa.es → extrae precios de frutas y hortalizas
     // 2. Mapea nombre → Producto en BD → guarda PrecioMayorista
     // 3. Registra en ScrapingLog (EXITOSO / FALLIDO)
-    // 4. AlertaService evalúa umbrales activos contra nuevos precios y los marca como disparados
 }
 ```
 
@@ -309,7 +329,7 @@ LM Studio (app de escritorio):
 
 | Rol | Permisos |
 |---|---|
-| **AGRICULTOR** | Ver catálogo y precios, gestionar sus parcelas, configurar alertas, usar asistente IA |
+| **AGRICULTOR** | Ver catálogo y precios, gestionar sus parcelas y cultivos, editar su perfil, usar el asistente IA con historial |
 | **ADMIN** | Todo lo anterior + CRUD catálogo, ver ScrapingLog, disparar scraping manual |
 
 Flujo: registro → login → JWT → Angular interceptor adjunta `Authorization: Bearer <token>` en cada request protegido.
@@ -345,25 +365,30 @@ Flujo: registro → login → JWT → Angular interceptor adjunta `Authorization
 | Método | Endpoint | Descripción | Rol |
 |---|---|---|---|
 | GET | `/api/parcelas` | Lista parcelas del usuario autenticado | AGRICULTOR |
-| POST | `/api/parcelas` | Crear nueva parcela | AGRICULTOR |
-| PUT | `/api/parcelas/{id}` | Editar nombre, superficie o descripción | AGRICULTOR |
+| POST | `/api/parcelas` | Crear nueva parcela (nombre, superficie, descripción, imagen) | AGRICULTOR |
+| PUT | `/api/parcelas/{id}` | Editar parcela (incluida la imagen) | AGRICULTOR |
 | DELETE | `/api/parcelas/{id}` | Eliminar parcela y sus cultivos | AGRICULTOR |
-| POST | `/api/parcelas/{id}/cultivos` | Añadir cultivo a parcela (`{ productoId, fechaSiembra, notas }`) | AGRICULTOR |
-| PUT | `/api/cultivos/{id}` | Actualizar estado o notas del cultivo | AGRICULTOR |
+| GET | `/api/cultivos` | Lista cultivos del usuario (filtrable por `parcelaId`) | AGRICULTOR |
+| POST | `/api/cultivos` | Añadir cultivo (`{ parcelaId, productoId, fechaSiembra, estado, notas }`) | AGRICULTOR |
 | DELETE | `/api/cultivos/{id}` | Eliminar cultivo de la parcela | AGRICULTOR |
 
-### Alertas
+### Perfil
 | Método | Endpoint | Descripción | Rol |
 |---|---|---|---|
-| GET | `/api/alertas` | Lista alertas del usuario | AGRICULTOR |
-| POST | `/api/alertas` | Crear alerta de precio | AGRICULTOR |
-| PUT | `/api/alertas/{id}` | Activar o desactivar alerta | AGRICULTOR |
-| DELETE | `/api/alertas/{id}` | Eliminar alerta | AGRICULTOR |
+| GET | `/api/perfil` | Datos del usuario autenticado | AGRICULTOR |
+| PUT | `/api/perfil` | Editar nombre, apellidos y foto | AGRICULTOR |
+
+### Conversaciones del asistente
+| Método | Endpoint | Descripción | Rol |
+|---|---|---|---|
+| GET | `/api/conversaciones` | Lista los chats guardados del usuario | AGRICULTOR |
+| GET | `/api/conversaciones/{id}` | Abre un chat con todos sus mensajes | AGRICULTOR |
+| DELETE | `/api/conversaciones/{id}` | Elimina un chat | AGRICULTOR |
 
 ### Asistente IA
 | Método | Endpoint | Descripción | Rol |
 |---|---|---|---|
-| POST | `/api/asistente/consulta` | Envía pregunta al agente Llama (con tool-calling) | AGRICULTOR |
+| POST | `/api/asistente/consulta` | Envía una pregunta al agente (con tool-calling y persistencia). **Público**: el invitado consulta precios/catálogo; las funciones sobre parcelas requieren estar autenticado | Público |
 
 ### Admin
 | Método | Endpoint | Descripción | Rol |
@@ -382,10 +407,9 @@ Flujo: registro → login → JWT → Angular interceptor adjunta `Authorization
 | `/precios` | Comparador de precios entre los 5 mercados | Público |
 | `/login` | Formulario de login | Público |
 | `/register` | Formulario de registro | Público |
-| `/asistente` | Chat con el agente IA experto en tendencias | AGRICULTOR |
-| `/mi-parcela` | Gestión de parcelas y cultivos | AGRICULTOR |
-| `/alertas` | Configuración de alertas de precio | AGRICULTOR |
-| `/perfil` | Datos del usuario y preferencias de notificación | AGRICULTOR |
+| `/asistente` | Chat con el agente IA (con historial de conversaciones para registrados) | Público |
+| `/mis-parcelas` | Gestión de parcelas y cultivos (crear, editar, imagen, eliminar) | AGRICULTOR |
+| `/perfil` | Datos del usuario y foto de perfil | AGRICULTOR |
 | `/admin` | Panel: catálogo, scraping log, disparo manual | ADMIN |
 
 ---
@@ -398,18 +422,22 @@ Flujo: registro → login → JWT → Angular interceptor adjunta `Authorization
 | **Service Facade** | Servicios desacoplan controllers de repositorios y lógica |
 | **Strategy** | `ScrapingStrategy` — interfaz intercambiable por fuente de datos |
 | **Singleton** | Beans Spring gestionados por el contenedor IoC |
-| **Observer** | `AlertaService` reacciona a cada actualización de precios |
 | **DTO** | Separación estricta entre entidades JPA y representación API |
 
 ---
 
 ## 🚀 Arranque local
 
-### Prerrequisito — LM Studio (solo si se va a usar el asistente IA)
+### Elegir el proveedor de LLM (`.env`)
 
-1. Descargar e instalar [LM Studio](https://lmstudio.ai/).
-2. Desde la pestaña *Discover*, descargar el modelo `qwen2.5-7b-instruct` (~4.5 GB).
-3. Pestaña *Local Server* → cargar el modelo → activar *Serve on Local Network* en puerto `1234`.
+Copia `.env.example` a `.env` y elige UNO de los tres proveedores (ver tabla en la sección del asistente):
+
+- **Nube (Groq o Gemini)** — la opción más sencilla: pega tu API key en `.env` y listo, sin instalar nada.
+- **Local (LM Studio)** — para privacidad/offline:
+  1. Instala [LM Studio](https://lmstudio.ai/) y descarga un modelo Qwen (p. ej. `qwen2.5-7b-instruct`).
+  2. *Local Server* → cargar el modelo → activar *Serve on Local Network* en el puerto `1234`.
+
+Si no defines `.env`, el stack usa LM Studio por defecto.
 
 ### Levantar el stack
 
@@ -433,8 +461,8 @@ docker-compose up --build
 | Tema 4 | Spring Boot REST + JPA | API REST + persistencia MySQL |
 | Prácticas CSS | Angular styles | Diseño visual de la app |
 | Scraping | Jsoup | Extracción de precios de Mercasa |
-| LLM local | Spring AI + Qwen 2.5 (LM Studio) | Asistente experto consumido vía `ChatClient`, modelo servido en host por LM Studio |
+| LLM (hibridable) | Spring AI + proveedor OpenAI-compatible | Asistente consumido vía `ChatClient`; proveedor elegible por `.env` (LM Studio local, Groq o Gemini) con conversaciones persistidas |
 | MCP (Model Context Protocol) | Spring AI MCP Server + Client | Tools delegadas a la API REST del backend; consumibles por backend y por cualquier cliente MCP externo |
 | Multi-módulo Maven | Parent POM + `backend/` + `mcp-server/` | Dos servicios Spring Boot hermanos sin código compartido — el mcp-server es cliente REST del backend |
-| Automatización | Spring `@Scheduled` | Job de scraping + evaluación de alertas |
-| Patrones GoF | Repository, Strategy, Observer, Facade | Aplicados en capa de servicio y datos |
+| Automatización | Spring `@Scheduled` | Job de scraping de precios de Mercasa |
+| Patrones GoF | Repository, Strategy, Facade, DTO | Aplicados en capa de servicio y datos |

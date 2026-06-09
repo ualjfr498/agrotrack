@@ -10,4 +10,6 @@ public interface CultivoParcelaRepository extends JpaRepository<CultivoParcela, 
     List<CultivoParcela> findByParcelaId(Long parcelaId);
 
     List<CultivoParcela> findByParcelaUsuarioId(Long usuarioId);
+
+    void deleteByParcelaId(Long parcelaId);
 }

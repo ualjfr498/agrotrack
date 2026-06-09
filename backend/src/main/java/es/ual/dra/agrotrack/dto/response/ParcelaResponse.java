@@ -10,6 +10,7 @@ public record ParcelaResponse(
     String nombre,
     BigDecimal superficieM2,
     String descripcion,
+    String imagen,
     LocalDateTime fechaCreacion
 ) {
     public static ParcelaResponse from(Parcela p) {
@@ -18,6 +19,7 @@ public record ParcelaResponse(
             p.getNombre(),
             p.getSuperficieM2(),
             p.getDescripcion(),
+            p.getImagen(),
             p.getFechaCreacion()
         );
     }

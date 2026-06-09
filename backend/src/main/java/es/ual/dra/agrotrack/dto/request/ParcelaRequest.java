@@ -9,5 +9,7 @@ import java.math.BigDecimal;
 public record ParcelaRequest(
     @NotBlank @Size(max = 80) String nombre,
     @Positive BigDecimal superficieM2,
-    String descripcion
+    String descripcion,
+    // Imagen opcional como data URL base64. Null = no cambiar/limpiar.
+    String imagen
 ) {}

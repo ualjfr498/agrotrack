@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
+import { imagenADataUrl } from '../../utils/imagen.util';
 
 @Component({
   selector: 'app-register',
@@ -15,12 +16,31 @@ export class Register {
   private readonly router = inject(Router);
 
   protected readonly form = this.fb.nonNullable.group({
+    nombre: ['', [Validators.required, Validators.maxLength(80)]],
+    apellidos: ['', [Validators.required, Validators.maxLength(120)]],
     email: ['', [Validators.required, Validators.email, Validators.maxLength(120)]],
     password: ['', [Validators.required, Validators.minLength(8), Validators.maxLength(128)]]
   });
 
   protected readonly error = signal<string | null>(null);
   protected readonly loading = signal(false);
+  protected readonly foto = signal<string | null>(null);
+
+  async onFoto(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    try {
+      this.foto.set(await imagenADataUrl(file));
+      this.error.set(null);
+    } catch (e) {
+      this.error.set((e as Error).message);
+    }
+  }
+
+  quitarFoto(): void {
+    this.foto.set(null);
+  }
 
   submit(): void {
     if (this.form.invalid) {
@@ -30,7 +50,7 @@ export class Register {
     this.error.set(null);
     this.loading.set(true);
 
-    const credentials = this.form.getRawValue();
+    const credentials = { ...this.form.getRawValue(), foto: this.foto() ?? undefined };
     this.auth.register(credentials).subscribe({
       next: () => {
         this.auth.login(credentials).subscribe({

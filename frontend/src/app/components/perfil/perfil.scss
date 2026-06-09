@@ -1,0 +1,35 @@
+.page-header {
+  margin-bottom: var(--space-5);
+}
+
+.perfil-foto {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.avatar {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--color-primary-light);
+}
+
+.avatar-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  background-color: var(--color-primary-light);
+}
+
+.foto-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+
+  // El input file está oculto dentro del label, que actúa como botón.
+  label { cursor: pointer; margin: 0; }
+}

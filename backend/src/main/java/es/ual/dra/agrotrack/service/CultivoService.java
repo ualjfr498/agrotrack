@@ -28,12 +28,17 @@ public class CultivoService {
     private final ProductoRepository productoRepo;
     private final ParcelaService parcelaService;
 
+    // readOnly = true: sesión abierta durante el mapeo para inicializar las
+    // relaciones LAZY (parcela y producto) de cada cultivo sin saltar
+    // LazyInitializationException (open-in-view está desactivado).
+    @Transactional(readOnly = true)
     public List<CultivoResponse> listarMios(Long usuarioId) {
         return cultivoRepo.findByParcelaUsuarioId(usuarioId).stream()
             .map(CultivoResponse::from)
             .toList();
     }
 
+    @Transactional(readOnly = true)
     public List<CultivoResponse> listarDeParcela(Long usuarioId, Long parcelaId) {
         parcelaService.obtenerPropia(usuarioId, parcelaId); // valida pertenencia
         return cultivoRepo.findByParcelaId(parcelaId).stream()
@@ -54,5 +59,15 @@ public class CultivoService {
         c.setEstado(req.estado() != null ? req.estado() : EstadoCultivo.SEMBRADO);
         c.setNotas(req.notas());
         return CultivoResponse.from(cultivoRepo.save(c));
+    }
+
+    /** Elimina un cultivo, validando que su parcela pertenece al usuario. */
+    @Transactional
+    public void eliminar(Long usuarioId, Long cultivoId) {
+        CultivoParcela c = cultivoRepo.findById(cultivoId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cultivo no encontrado"));
+        // Reutiliza la guarda de pertenencia de la parcela (404 si es de otro).
+        parcelaService.obtenerPropia(usuarioId, c.getParcela().getId());
+        cultivoRepo.delete(c);
     }
 }

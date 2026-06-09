@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { adminGuard } from './guards/admin.guard';
+import { authGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
   {
@@ -26,6 +27,22 @@ export const routes: Routes = [
   { path: 'catalogo', redirectTo: 'analizador', pathMatch: 'full' },
   { path: 'catalogo/:id', redirectTo: 'analizador/:id' },
   { path: 'precios', redirectTo: 'analizador', pathMatch: 'full' },
+  {
+    path: 'mis-parcelas',
+    canActivate: [authGuard],
+    loadComponent: () => import('./components/mi-parcela/mi-parcela').then(m => m.MiParcela)
+  },
+  {
+    path: 'perfil',
+    canActivate: [authGuard],
+    loadComponent: () => import('./components/perfil/perfil').then(m => m.Perfil)
+  },
+  {
+    // Público: un invitado puede usar el asistente para precios/catálogo. Las
+    // funciones de parcelas/cultivos solo responden si está autenticado.
+    path: 'asistente',
+    loadComponent: () => import('./components/asistente/asistente').then(m => m.Asistente)
+  },
   {
     path: 'admin',
     canActivate: [adminGuard],

@@ -58,6 +58,31 @@
   gap: var(--space-2);
 }
 
+.user-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  text-decoration: none;
+
+  &:hover { text-decoration: none; }
+}
+
+.user-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--color-border);
+}
+
+.user-avatar-placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-primary-light);
+  font-size: 0.95rem;
+}
+
 .user-email {
   font-size: 0.85rem;
   color: var(--color-text-muted);

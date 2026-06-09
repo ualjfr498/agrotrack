@@ -38,7 +38,9 @@
     <div class="grid">
       @for (p of productosFiltrados(); track p.id) {
         <a class="card producto-card" [routerLink]="['/analizador', p.id]">
-          <span class="badge">{{ p.categoria.nombre }}</span>
+          @if (categoriaSeleccionada() === null) {
+            <span class="badge">{{ categoriaSingular(p.categoria.nombre) }}</span>
+          }
           <h3>{{ p.nombre }}</h3>
           @if (p.descripcion) {
             <p class="muted">{{ p.descripcion }}</p>

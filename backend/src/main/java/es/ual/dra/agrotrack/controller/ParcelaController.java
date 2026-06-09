@@ -39,4 +39,20 @@ public class ParcelaController {
         ParcelaResponse creada = parcelaService.crear(user.getId(), req);
         return ResponseEntity.status(HttpStatus.CREATED).body(creada);
     }
+
+    @PutMapping("/{id}")
+    public ParcelaResponse editar(
+            @AuthenticationPrincipal AppUserPrincipal user,
+            @PathVariable Long id,
+            @Valid @RequestBody ParcelaRequest req) {
+        return parcelaService.editar(user.getId(), id, req);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> eliminar(
+            @AuthenticationPrincipal AppUserPrincipal user,
+            @PathVariable Long id) {
+        parcelaService.eliminar(user.getId(), id);
+        return ResponseEntity.noContent().build();
+    }
 }

@@ -1,33 +1,63 @@
 <section class="hero">
   <div class="hero-inner container">
-    <h1>Precios mayoristas reales, en un vistazo</h1>
+    <span class="hero-eyebrow">🌱 AgroTrack</span>
+    <h1>Precios mayoristas reales, registro de tus parcelas y cultivos y un asistente que te aconseja</h1>
     <p>
-      Seguimiento de precios de frutas y hortalizas en los cinco grandes mercados mayoristas
-      españoles. Actualizado dos veces por semana desde mercasa.es.
+      Sigue la evolución de los precios de frutas y hortalizas en los cinco grandes
+      mercados mayoristas de España (Mercamadrid, Mercabarna, Mercabilbao,
+      Mercavalencia y Mercasevilla), actualizados dos veces por semana desde mercasa.es.
     </p>
     <div class="hero-actions">
       <a routerLink="/analizador" class="btn btn-primary">Analizar precios</a>
+      <a routerLink="/asistente" class="btn btn-secondary">Probar el asistente</a>
     </div>
   </div>
 </section>
 
 <section class="container">
-  <h2>Explora por categoría</h2>
-
-  @if (loading()) {
-    <p class="muted">Cargando categorías…</p>
-  } @else if (error(); as msg) {
-    <div class="alert alert-error">{{ msg }}</div>
-  } @else {
-    <div class="grid">
-      @for (cat of categorias(); track cat.id) {
-        <a class="card cat-card" [routerLink]="['/analizador']" [queryParams]="{ categoriaId: cat.id }">
-          <h3>{{ cat.nombre }}</h3>
-          <span class="muted">Ver productos →</span>
-        </a>
-      } @empty {
-        <p class="muted">No hay categorías disponibles.</p>
-      }
+  <h2>¿Qué puedes hacer?</h2>
+  <div class="grid features">
+    <div class="card feature">
+      <span class="feature-icon">📊</span>
+      <h3>Comparar precios</h3>
+      <p class="muted">
+        Consulta el histórico de cada producto y descubre en qué mercado se paga
+        mejor, sin necesidad de registrarte.
+      </p>
     </div>
-  }
+    <div class="card feature">
+      <span class="feature-icon">💬</span>
+      <h3>Preguntar al asistente</h3>
+      <p class="muted">
+        Habla en lenguaje natural: «¿en qué mercado está más barata la cereza?».
+        El asistente consulta los datos reales y te responde al momento.
+      </p>
+    </div>
+    <div class="card feature">
+      <span class="feature-icon">🌾</span>
+      <h3>Gestionar tus cultivos</h3>
+      <p class="muted">
+        Si te registras, puedes llevar tus parcelas y cultivos desde la web o
+        pidiéndoselo al asistente, y recibir consejos personalizados de siembra y venta.
+      </p>
+    </div>
+  </div>
 </section>
+
+@if (!auth.isAuthenticated()) {
+<section class="container">
+  <div class="card cta">
+    <div>
+      <h2>Saca todo el partido a AgroTrack</h2>
+      <p class="muted">
+        Crea tu cuenta gratis para registrar tus parcelas y cultivos —desde la
+        interfaz o por chat— y recibir recomendaciones a medida según tu terreno.
+      </p>
+    </div>
+    <div class="cta-actions">
+      <a routerLink="/register" class="btn btn-primary">Crear cuenta</a>
+      <a routerLink="/login" class="btn btn-secondary">Entrar</a>
+    </div>
+  </div>
+</section>
+}

@@ -1,0 +1,6 @@
+export enum EstadoCultivo {
+  SEMBRADO = 'SEMBRADO',
+  CRECIENDO = 'CRECIENDO',
+  COSECHADO = 'COSECHADO',
+  RETIRADO = 'RETIRADO'
+}

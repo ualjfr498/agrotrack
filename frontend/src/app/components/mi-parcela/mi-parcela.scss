@@ -1,0 +1,189 @@
+.page-header {
+  margin-bottom: var(--space-5);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: var(--space-5);
+  align-items: start;
+}
+
+@media (max-width: 800px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.forms {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+
+  .card h2 {
+    margin-top: 0;
+    font-size: 1.1rem;
+  }
+
+  // Marcador visual del modo edición: la tarjeta cambia de aspecto para que
+  // no se confunda con la creación de una parcela nueva.
+  .card.editando {
+    border: 1px solid var(--color-primary);
+    border-left: 4px solid var(--color-primary);
+    background-color: var(--color-primary-light);
+  }
+
+  .modo-edicion {
+    display: inline-block;
+    margin-bottom: var(--space-2);
+    padding: 2px var(--space-2);
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    background-color: var(--color-primary);
+    color: #fff;
+  }
+}
+
+.form-field {
+  margin-bottom: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+
+  label { font-size: 0.85rem; font-weight: 500; }
+
+  input, select, textarea {
+    padding: var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm, 6px);
+    font: inherit;
+    background-color: var(--color-surface);
+
+    &:focus { outline: none; border-color: var(--color-primary); }
+  }
+}
+
+.parcelas {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.parcela {
+  .parcela-img {
+    width: 100%;
+    height: 160px;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--space-3);
+  }
+
+  .parcela-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+
+    h3 { margin: 0; color: var(--color-primary-dark); }
+
+    .parcela-head-right {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+    }
+  }
+
+  // Encabezado de sección sutil: no debe competir con el título de la parcela
+  // (h3, verde) ni con los nombres de cultivo.
+  .seccion-label {
+    margin: var(--space-4) 0 var(--space-2);
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-text-muted);
+  }
+}
+
+.cultivos {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+  }
+
+  // Nombre del cultivo = enlace al analizador de precios de ese producto.
+  .cultivo-nombre {
+    font-weight: 600;
+    color: var(--color-primary-dark);
+    text-decoration: none;
+
+    &:hover { text-decoration: underline; }
+  }
+}
+
+.small { font-size: 0.8rem; }
+
+.badge.estado {
+  &[data-estado="SEMBRADO"]  { background-color: #e3f2fd; color: #1565c0; }
+  &[data-estado="CRECIENDO"] { background-color: #e8f5e9; color: #2e7d32; }
+  &[data-estado="COSECHADO"] { background-color: #fff8e1; color: #f9a825; }
+  &[data-estado="RETIRADO"]  { background-color: #f5f5f5; color: #757575; }
+}
+
+// Indicador de parcela en barbecho (sin cultivos asociados).
+.barbecho {
+  display: inline-block;
+  background-color: #efebe9;
+  color: #6d4c41;
+  padding: 2px var(--space-2);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.cultivo-eliminar {
+  margin-left: auto;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+
+  &:hover { color: var(--color-danger); background-color: #fef2f2; }
+}
+
+.img-preview {
+  margin-top: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  align-items: flex-start;
+
+  img {
+    width: 100%;
+    max-height: 160px;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border);
+  }
+}
+
+.form-actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
